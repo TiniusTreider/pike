@@ -5,6 +5,7 @@
 
 #include <immintrin.h>
 #include <string.h>
+#include <assert.h>
 
 static inline p_index pop_bit(p_bitboard *bitboard)
 {
@@ -48,17 +49,13 @@ static inline p_bitboard is_square_attacked(p_board board, p_index square)
 {
         // pawn
 
-        const p_bitboard left = BIT_MASK(board->player ?
-                square + 7 :
-                square - 9
-        ) & ~FILE_H;
-        const p_index right = BIT_MASK(board->player ?
-                square + 9 :
-                square - 7
-        ) & ~FILE_A;
-        const p_bitboard checking_pawns = (
-                (left | right) &
-                board->bitboards[PIECE_WITH(PAWN, !board->player)]
+        const p_bitboard target = BIT_MASK(square);
+        const p_bitboard left_target = target & ~FILE_H;
+        const p_bitboard right_target = target & ~FILE_A;
+        const p_bitboard pawns = board->bitboards[PIECE_WITH(PAWN, !board->player)];
+        const p_bitboard checking_pawns = pawns & (board->player ?
+                (right_target >> 9) | (left_target >> 7) :
+                (right_target << 7) | (left_target << 9)
         );
         if (checking_pawns)
                 return checking_pawns;
@@ -74,11 +71,13 @@ static inline p_bitboard is_square_attacked(p_board board, p_index square)
 
         // bishop
 
+        const p_bitboard king = board->bitboards[PIECE_WITH(KING, board->player)];
+
         const p_bitboard bishops = (
                 board->bitboards[PIECE_WITH(BISHOP, !board->player)] |
                 board->bitboards[PIECE_WITH(QUEEN, !board->player)]
         );
-        const size_t bishop_index = _pext_u64(board->all_pieces, BISHOP_MOVE_TABLE[square]);
+        const size_t bishop_index = _pext_u64(board->all_pieces ^ king, BISHOP_MOVE_TABLE[square]);
         const p_bitboard checking_bishops = bishops & BISHOP_PEXT_TABLE[square][bishop_index];
         if (checking_bishops)
                 return checking_bishops;
@@ -89,16 +88,16 @@ static inline p_bitboard is_square_attacked(p_board board, p_index square)
                 board->bitboards[PIECE_WITH(ROOK, !board->player)] |
                 board->bitboards[PIECE_WITH(QUEEN, !board->player)]
         );
-        const size_t rook_index = _pext_u64(board->all_pieces, ROOK_MOVE_TABLE[square]);
+        const size_t rook_index = _pext_u64(board->all_pieces ^ king, ROOK_MOVE_TABLE[square]);
         const p_bitboard checking_rooks = rooks & ROOK_PEXT_TABLE[square][rook_index];
         if (checking_rooks)
                 return checking_rooks;
 
         // king
 
-        const p_bitboard king = board->bitboards[PIECE_WITH(KING, !board->player)];
-        if (king & KING_MOVE_TABLE[square])
-                return king;
+        const p_bitboard other_king = board->bitboards[PIECE_WITH(KING, !board->player)];
+        if (other_king & KING_MOVE_TABLE[square])
+                return other_king;
 
         return 0ULL;
 }
@@ -127,18 +126,20 @@ static inline p_bitboard bishop_pins(p_board board, p_bitboard rays[64], p_bitbo
         {
                 const p_index pos = pop_bit(&attackers);
 
-                const p_bitboard ray = BETWEEN_TABLE[pos][king_pos];
+                const p_bitboard pos_mask = BIT_MASK(pos);
+                const p_bitboard ray = BETWEEN_TABLE[pos][king_pos] | pos_mask;
 
-                if (POP(enemy & ray) == 0) {
-                        const p_bitboard blockers = friendly & ray;
-                        const p_index population = POP(blockers);
-                        if (population == 1) {
-                                const p_index pin = CTZ(blockers);
-                                rays[pin] = ray;
-                                BITBOARD_ADD_BIT(pins, pin);
-                        } else if (population == 0) {
-                                *checkers |= BIT_MASK(pos);
-                        }
+                if (POP(enemy & ray) != 1)
+                        continue;
+
+                const p_bitboard blockers = friendly & ray;
+                const p_index population = POP(blockers);
+                if (population == 1) {
+                        const p_index pin = CTZ(blockers);
+                        rays[pin] = ray;
+                        BITBOARD_ADD_BIT(pins, pin);
+                } else if (population == 0) {
+                        *checkers |= pos_mask;
                 }
         }
 
@@ -169,23 +170,28 @@ static inline p_bitboard rook_pins(p_board board, p_bitboard rays[64], p_bitboar
         {
                 const p_index pos = pop_bit(&attackers);
 
-                const p_bitboard ray = BETWEEN_TABLE[pos][king_pos];
+                const p_bitboard pos_mask = BIT_MASK(pos);
+                const p_bitboard ray = BETWEEN_TABLE[pos][king_pos] | pos_mask;
 
-                if (POP(enemy & ray) == 0) {
-                        const p_bitboard blockers = friendly & ray;
-                        const p_index population = POP(blockers);
-                        if (population == 1) {
-                                const p_index pin = CTZ(blockers);
-                                rays[pin] = ray;
-                                BITBOARD_ADD_BIT(pins, pin);
-                        } else if (population == 0) {
-                                *checkers |= BIT_MASK(pos);
-                        }
+
+                if (POP(enemy & ray) != 1)
+                        continue;
+
+                const p_bitboard blockers = friendly & ray;
+                const p_index population = POP(blockers);
+                if (population == 1) {
+                        const p_index pin = CTZ(blockers);
+                        rays[pin] = ray;
+                        BITBOARD_ADD_BIT(pins, pin);
+                } else if (population == 0) {
+                        *checkers |= pos_mask;
                 }
         }
 
         return pins;
 }
+
+static constexpr p_index BEHIND[2] = { (p_index)-8, 8 };
 
 static constexpr p_bitboard LONG_CASTLE_MASK[2] = { 0x000000000000000EULL, 0x0E00000000000000ULL };
 static constexpr p_bitboard SHORT_CASTLE_MASK[2] = { 0x0000000000000060ULL, 0x6000000000000000ULL };
@@ -307,8 +313,11 @@ size_t generate_moves(p_board board, p_move buffer[218])
         p_bitboard capture_left = board->player ?
                 pawn >> 9 :
                 pawn << 7;
+
+        capture_left &= ~FILE_H;
         const p_bitboard ep_bit = board->ep_square == NO_SQUARE ? 0ULL : BIT_MASK(board->ep_square);
-        capture_left &= (enemy | ep_bit) & ~FILE_H;
+        p_bitboard ep_left = capture_left & ep_bit;
+        capture_left &= enemy;
         p_bitboard capture_left_promotion = capture_left & PROMOTION_RANKS;
         capture_left &= ~PROMOTION_RANKS;
 
@@ -329,8 +338,7 @@ size_t generate_moves(p_board board, p_move buffer[218])
 
                 buffer[move_count++] = (p_move){
                         .from = startpos,
-                        .to = endpos,
-                        .flags = endpos == board->ep_square ? MOVE_EN_PASSANT : 0
+                        .to = endpos
                 };
         }
 
@@ -355,7 +363,8 @@ size_t generate_moves(p_board board, p_move buffer[218])
         p_bitboard capture_right = board->player ?
                 pawn >> 7 :
                 pawn << 9;
-        capture_right &= (enemy | ep_bit) & ~FILE_A;
+        capture_right &= ~FILE_A;p_bitboard ep_right = capture_right & ep_bit;
+        capture_right &= enemy;
         p_bitboard capture_right_promotion = capture_right & PROMOTION_RANKS;
         capture_right &= ~PROMOTION_RANKS;
 
@@ -377,8 +386,7 @@ size_t generate_moves(p_board board, p_move buffer[218])
 
                 buffer[move_count++] = (p_move){
                         .from = startpos,
-                        .to = endpos,
-                        .flags = endpos == board->ep_square ? MOVE_EN_PASSANT : 0
+                        .to = endpos
                 };
         }
 
@@ -400,6 +408,77 @@ size_t generate_moves(p_board board, p_move buffer[218])
                 push_promotions(buffer, &move_count, startpos, endpos);
         }
 
+        if (ep_bit)
+        {
+                p_bitboard *enemy_ptr = board->player ?
+                        &board->white_pieces :
+                        &board->black_pieces;
+                const p_index ep_pawn = board->ep_square + BEHIND[board->player];
+                const p_bitboard ep_pawn_bit = BIT_MASK(ep_pawn);
+
+                p_bitboard ep_pin_rays[64];
+                memset(ep_pin_rays, 0, 64 * sizeof(p_bitboard));
+                p_bitboard ep_checkers = 0ULL;
+
+                BITBOARD_REMOVE_BIT(*enemy_ptr, ep_pawn);
+                const p_bitboard ep_bishop_pin_board = bishop_pins(
+                        board, ep_pin_rays, &ep_checkers
+                );
+                const p_bitboard ep_rook_pin_board = rook_pins(
+                        board, ep_pin_rays, &ep_checkers
+                );
+                BITBOARD_ADD_BIT(*enemy_ptr, ep_pawn);
+
+                if (ep_left)
+                {
+                        const p_index endpos = CTZ(ep_left);
+                        const p_index startpos = board->player ? endpos + 9 : endpos - 7;
+
+                        const p_bitboard end_mask = BIT_MASK(endpos);
+                        if (!((end_mask | ep_pawn_bit) & check_ray))
+                                goto ep_right;
+
+                        const p_bitboard start_mask = BIT_MASK(startpos);
+                        if (start_mask & ep_bishop_pin_board && !(end_mask & ep_pin_rays[startpos]))
+                                goto ep_right;
+                        if (start_mask & ep_rook_pin_board)
+                                goto ep_right;
+
+                        buffer[move_count++] = (p_move){
+                                .from = startpos,
+                                .to = endpos,
+                                .flags = MOVE_EN_PASSANT
+                        };
+                }
+
+ep_right:
+
+                if (ep_right)
+                {
+                        const p_index endpos = CTZ(ep_right);
+                        const p_index startpos = board->player ? endpos + 7 : endpos - 9;
+
+                        const p_bitboard end_mask = BIT_MASK(endpos);
+                        if (!((end_mask | ep_pawn_bit) & check_ray))
+                                goto knight;
+
+                        const p_bitboard start_mask = BIT_MASK(startpos);
+                        if (start_mask & ep_bishop_pin_board && !(end_mask & ep_pin_rays[startpos]))
+                                goto knight;
+                        if (start_mask & ep_rook_pin_board)
+                                goto knight;
+
+                        buffer[move_count++] = (p_move){
+                                .from = startpos,
+                                .to = endpos,
+                                .flags = MOVE_EN_PASSANT
+                        };
+
+                }
+        }
+
+knight:
+
         // knight
 
         p_bitboard knight_board = board->bitboards[PIECE_WITH(KNIGHT, board->player)];
@@ -414,15 +493,11 @@ size_t generate_moves(p_board board, p_move buffer[218])
 
                 p_bitboard move_board = KNIGHT_MOVE_TABLE[startpos] & ~friendly;
 
-                if (!(move_board & check_ray))
-                        continue;
+                move_board &= check_ray;
 
                 while (move_board)
                 {
                         const p_index endpos = pop_bit(&move_board);
-
-                        if (!(BIT_MASK(endpos) & check_ray))
-                                continue;
 
                         buffer[move_count++] = (p_move){
                                 .from = startpos,
@@ -444,19 +519,15 @@ size_t generate_moves(p_board board, p_move buffer[218])
                 const size_t index = _pext_u64(board->all_pieces, BISHOP_MOVE_TABLE[startpos]);
                 p_bitboard move_board = BISHOP_PEXT_TABLE[startpos][index] & ~friendly;
 
-                if (!(move_board & check_ray))
-                        continue;
-
                 const p_bitboard mask = BIT_MASK(startpos);
                 if (mask & rook_pin_board)
                         continue;
 
+                move_board &= check_ray;
+
                 while (move_board)
                 {
                         const p_index endpos = pop_bit(&move_board);
-
-                        if (!(BIT_MASK(endpos) & check_ray))
-                                continue;
 
                         if (mask & bishop_pin_board && !(BIT_MASK(endpos) & pin_rays[startpos]))
                                 continue;
@@ -479,12 +550,11 @@ size_t generate_moves(p_board board, p_move buffer[218])
                 const size_t index = _pext_u64(board->all_pieces, ROOK_MOVE_TABLE[startpos]);
                 p_bitboard move_board = ROOK_PEXT_TABLE[startpos][index] & ~friendly;
 
-                if (!(move_board & check_ray))
-                        continue;
-
                 const p_bitboard mask = BIT_MASK(startpos);
                 if (mask & bishop_pin_board)
                         continue;
+
+                move_board &= check_ray;
 
                 while (move_board)
                 {
@@ -503,7 +573,7 @@ size_t generate_moves(p_board board, p_move buffer[218])
                 }
         }
 
-        king:
+king:
 
         p_bitboard king_board = board->bitboards[PIECE_WITH(KING, board->player)];
 

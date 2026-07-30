@@ -203,9 +203,6 @@ void unmake_move(p_board board, p_move move, p_unmake data)
 
         // restore board state
 
-        const p_piece from = board->mailbox[move.to];
-        const p_piece to = data.captured_piece;
-
         p_bitboard *friendly = board->player ?
                 &board->black_pieces :
                 &board->white_pieces;
@@ -215,6 +212,9 @@ void unmake_move(p_board board, p_move move, p_unmake data)
 
         if (move.flags)
                 unmake_special_move(board, move, friendly, enemy);
+
+        const p_piece from = board->mailbox[move.to];
+        const p_piece to = data.captured_piece;
 
         BITBOARD_ADD_BIT(board->bitboards[to], move.to);
         BITBOARD_REMOVE_BIT(board->bitboards[from], move.to);

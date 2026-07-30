@@ -67,3 +67,15 @@ void print_board(struct board *board)
         printf("\n\n");
 }
 
+void print_bitboard(p_bitboard board)
+{
+        for (int i = 0; i < 8; i++)
+        {
+                const p_bitboard mask = 255ULL << (i * 8);
+
+                const uint8_t row = (board & mask) >> (i * 8);
+
+                printf("%08b\n", row);
+        }
+}
+

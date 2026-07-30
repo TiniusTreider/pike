@@ -140,6 +140,9 @@ void perft(size_t depth, char *fen, char *move_list)
                 if (board->black_pieces != test.black_pieces)
                         error("\nblack_pieces doesnt match after unmake");
 
+                if ((board->white_pieces | board->black_pieces) != board->all_pieces)
+                        error("\nwhite + black != all");
+
                 printf(" %zu\n", size);
                 sum += size;
         }
