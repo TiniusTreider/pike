@@ -249,15 +249,20 @@ static constexpr p_piece_type ALGEBRAIC['R' - 'B' + 1] = {
         ROOK
 };
 
+#define DELIM " \t"
+#define FEN_BUFFER_SIZE 128
+
 void set_board(p_board board, char *fen_string)
 {
-        char fen[128];
+        char fen[FEN_BUFFER_SIZE];
         const size_t size = strlen(fen_string);
+        if (size + 1 > FEN_BUFFER_SIZE)
+                return;
         memcpy(fen, fen_string, size + 1);
 
-        char *fen_position = strtok(fen, " ");
+        char *fen_position = strtok(fen, DELIM);
         if (*fen_position == '\0' || fen_position == NULL)
-                errorf("invalid 1st segment of FEN \"%s\"", fen);
+                return;
 
         memset(board->mailbox, EMPTY, 64 * sizeof(p_piece));
         memset(board->bitboards, 0, 12 * sizeof(p_bitboard));
@@ -295,21 +300,21 @@ void set_board(p_board board, char *fen_string)
                 square++;
         } while (*++fen_position);
 
-        char *fen_stm = strtok(NULL, " ");
+        char *fen_stm = strtok(NULL, DELIM);
         if (*fen_stm == '\0' || fen_stm == NULL)
-                errorf("invalid 2nd segment of FEN \"%s\"", fen);
+                return;
 
         if (*fen_stm == 'w') {
                 board->player = WHITE;
         } else if (*fen_stm == 'b') {
                 board->player = BLACK;
         } else {
-                errorf("invalid char '%c' in 2nd letter of FEN \"%s\"", *fen_stm, fen);
+                return;
         }
 
-        char *fen_castling_rights = strtok(NULL, " ");
+        char *fen_castling_rights = strtok(NULL, DELIM);
         if (*fen_castling_rights == '\0' || fen_castling_rights == NULL)
-                errorf("invalid 3rd segment of FEN \"%s\"", fen);
+                return;
 
         board->castling_rights = 0;
         do {
@@ -327,16 +332,13 @@ void set_board(p_board board, char *fen_string)
                                 board->castling_rights |= B_LONG_CASTLE; break;
 
                         default:
-                                errorf(
-                                        "invalid character '%c' in 3rd segment of FEN \"%s\"",
-                                        letter, fen
-                                );
+                                return;
                 }
         } while (*++fen_castling_rights);
 
-        char *fen_ep_square = strtok(NULL, " ");
+        char *fen_ep_square = strtok(NULL, DELIM);
         if (*fen_ep_square == '\0' || fen_ep_square == NULL)
-                errorf("invalid 4th segment of FEN \"%s\"", fen);
+                return;
 
         if (*fen_ep_square == '-') {
                 board->ep_square = NO_SQUARE;
@@ -345,7 +347,7 @@ void set_board(p_board board, char *fen_string)
                 const p_index rank = fen_ep_square[1];
 
                 if (file > 7 || rank > 7)
-                        errorf("invalid 4th segment of FEN \"%s\"", fen);
+                        return;
 
                 board->ep_square = SQUARE_WITH(file, rank);
         }

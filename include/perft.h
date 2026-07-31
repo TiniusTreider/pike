@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-void perft(size_t depth, char *fen, char *move_list);
+void perft(char *fen, size_t depth);
 
 #endif
 

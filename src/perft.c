@@ -1,23 +1,23 @@
-#include "perft.h"
-#include "movegen.h"
-#include "structboard.h"
-#include "error.h"
-#include "print.h"
+#define _POSIX_C_SOURCE 200809L
 
-#include <stddef.h>
+#include "perft.h"
+#include "board.h"
+#include "movegen.h"
+
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
-static inline size_t count(p_board board, size_t depth)
+size_t count(p_board board, size_t depth)
 {
-        if (depth == 0)
-                return 1;
-
         p_move buffer[218];
-        const size_t size = generate_moves(board, buffer);
+        const size_t move_count = generate_moves(board, buffer);
+
+        if (depth == 0)
+                return move_count;
 
         size_t sum = 0;
-        for (size_t i = 0; i < size; i++)
+        for (size_t i = 0; i < move_count; i++)
         {
                 const p_unmake data = make_move(board, buffer[i]);
 
@@ -29,125 +29,43 @@ static inline size_t count(p_board board, size_t depth)
         return sum;
 }
 
-static inline p_index parse_square(const char *s)
+static double now(void)
 {
-    int file = s[0] - 'a';
-    int rank = s[1] - '1';
-
-    return rank * 8 + file;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec + ts.tv_nsec / 1e9;
 }
 
-static int parse_uci_move(p_board board, const char *uci, p_move *result)
+void perft(char *fen, size_t depth)
 {
-    p_move buffer[218];
-    size_t count = generate_moves(board, buffer);
-
-    p_index from = parse_square(uci);
-    p_index to   = parse_square(uci + 2);
-
-    int promotion = 0;
-
-    if (uci[4])
-    {
-        switch (uci[4])
-        {
-            case 'n': promotion = KNIGHT; break;
-            case 'b': promotion = BISHOP; break;
-            case 'r': promotion = ROOK;   break;
-            case 'q': promotion = QUEEN;  break;
-        }
-    }
-
-    for (size_t i = 0; i < count; i++)
-    {
-        if (buffer[i].from != from)
-            continue;
-
-        if (buffer[i].to != to)
-            continue;
-
-        if (promotion && buffer[i].promotion != promotion)
-            continue;
-
-        if (!promotion && (buffer[i].flags & MOVE_PROMOTION))
-            continue;
-
-        *result = buffer[i];
-        return 1;
-    }
-
-    return 0;
-}
-
-void parse_move_list(p_board board, char *move_list)
-{
-    char *token = strtok(move_list, " ");
-
-    while (token)
-    {
-        p_move move;
-
-        if (!parse_uci_move(board, token, &move))
-        {
-            printf("Invalid move: %s\n", token);
-            return;
+        if (depth == 0) {
+                printf("perft depth cannot be 0\n");
+                return;
         }
 
-        (void)make_move(board, move);
+        p_board board;
 
-        token = strtok(NULL, " ");
-    }
-}
-
-struct bitboards {
-        p_bitboard *bitboards;
-        p_bitboard all_pieces;
-        p_bitboard white_pieces;
-        p_bitboard black_pieces;
-};
-
-void perft(size_t depth, char *fen, char *move_list)
-{
-        p_board board = init_board(fen);
-
-        if (move_list != NULL)
-                parse_move_list(board, move_list);
-
-        p_move buffer[218];
-        const size_t move_count = generate_moves(board, buffer);
-        size_t sum = 0;
-        for (size_t i = 0; i < move_count; i++)
-        {
-                print_move(buffer[i]);
-
-                const struct bitboards test = (struct bitboards){
-                        .bitboards = board->bitboards,
-                        .all_pieces = board->all_pieces,
-                        .white_pieces = board->white_pieces,
-                        .black_pieces = board->black_pieces
-                };
-
-                const p_unmake data = make_move(board, buffer[i]);
-                const size_t size = count(board, depth - 1);
-                unmake_move(board, buffer[i], data);
-
-                if (memcmp(test.bitboards, board->bitboards, 12 * sizeof(p_bitboard)) != 0)
-                        error("\nbitboards dont match after unmake");
-                if (board->all_pieces != test.all_pieces)
-                        error("\nall_pieces doesnt match after unmake");
-                if (board->white_pieces != test.white_pieces)
-                        error("\nwhite_pieces doesnt match after unmake");
-                if (board->black_pieces != test.black_pieces)
-                        error("\nblack_pieces doesnt match after unmake");
-
-                if ((board->white_pieces | board->black_pieces) != board->all_pieces)
-                        error("\nwhite + black != all");
-
-                printf(" %zu\n", size);
-                sum += size;
+        if (strcmp(fen, "startpos") == 0) {
+                board = init_board(STARTPOS_FEN);
+        } else if (strcmp(fen, "kiwipete") == 0) {
+                board = init_board(KIWIPETE_FEN);
+        } else {
+                board = init_board(fen);
         }
 
-        printf("\n%zu\n", sum);
+        for (size_t i = 0; i < depth; i++)
+        {
+                const double before = now();
+
+                const size_t nodes = count(board, i);
+
+                const double after = now();
+
+                const double time = after - before;
+                const double mnps = (nodes / 1e6) / time;
+
+                printf("nodes at depth %zu: %zu (%.3lfMnps, %.6lfs)\n", i + 1, nodes, mnps, time);
+        }
 
         clean_board(board);
 }

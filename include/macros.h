@@ -23,5 +23,7 @@
 #define POP(BB) __builtin_popcountll(BB)
 #define CTZ(BB) __builtin_ctzll(BB)
 
+#define ELEMENTS_OF(ARRAY) (sizeof(ARRAY) / sizeof(ARRAY[0]))
+
 #endif
 
