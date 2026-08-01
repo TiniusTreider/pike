@@ -596,35 +596,31 @@ king:
                 }
         }
 
-        if (board->castling_rights & (W_LONG_CASTLE << (board->player * 2))) {
-                if (!(board->all_pieces & LONG_CASTLE_MASK[board->player])) {
-                        if (
-                                !is_square_attacked(board, KING_START_SQUARE[board->player]) &&
-                                !is_square_attacked(board, LONG_CASTLE_INT_SQUARE[board->player]) &&
-                                !is_square_attacked(board, LONG_CASTLE_END_SQUARE[board->player])
-                        ) {
-                                buffer[move_count++] = (p_move){
-                                        .from = KING_START_SQUARE[board->player],
-                                        .to = LONG_CASTLE_END_SQUARE[board->player],
-                                        .flags = MOVE_LONG_CASTLE
-                                };
-                        }
+        if (!checkers) {
+                if (
+                        board->castling_rights & (W_LONG_CASTLE << (board->player * 2)) &&
+                        !(board->all_pieces & LONG_CASTLE_MASK[board->player]) &&
+                        !is_square_attacked(board, LONG_CASTLE_INT_SQUARE[board->player]) &&
+                        !is_square_attacked(board, LONG_CASTLE_END_SQUARE[board->player])
+                ) {
+                        buffer[move_count++] = (p_move){
+                                .from = KING_START_SQUARE[board->player],
+                                .to = LONG_CASTLE_END_SQUARE[board->player],
+                                .flags = MOVE_LONG_CASTLE
+                        };
                 }
-        }
 
-        if (board->castling_rights & (W_SHORT_CASTLE << (board->player * 2))) {
-                if (!(board->all_pieces & SHORT_CASTLE_MASK[board->player])) {
-                        if (
-                                !is_square_attacked(board, KING_START_SQUARE[board->player]) &&
-                                !is_square_attacked(board, SHORT_CASTLE_INT_SQUARE[board->player]) &&
-                                !is_square_attacked(board, SHORT_CASTLE_END_SQUARE[board->player])
-                        ) {
-                                buffer[move_count++] = (p_move){
-                                        .from = KING_START_SQUARE[board->player],
-                                        .to = SHORT_CASTLE_END_SQUARE[board->player],
-                                        .flags = MOVE_SHORT_CASTLE
-                                };
-                        }
+                if (
+                        board->castling_rights & (W_SHORT_CASTLE << (board->player * 2)) &&
+                        !(board->all_pieces & SHORT_CASTLE_MASK[board->player]) &&
+                        !is_square_attacked(board, SHORT_CASTLE_INT_SQUARE[board->player]) &&
+                        !is_square_attacked(board, SHORT_CASTLE_END_SQUARE[board->player])
+                ) {
+                        buffer[move_count++] = (p_move){
+                                .from = KING_START_SQUARE[board->player],
+                                .to = SHORT_CASTLE_END_SQUARE[board->player],
+                                .flags = MOVE_SHORT_CASTLE
+                        };
                 }
         }
 
