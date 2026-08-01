@@ -2,13 +2,8 @@
 
 #include <stddef.h>
 
-p_engine init_engine(void)
+void init_engine(p_engine engine)
 {
-        return NULL;
-}
-
-void clean_engine(p_engine engine)
-{
-
+        return;
 }
 

@@ -7,8 +7,7 @@ typedef struct {
 
 extern p_engine pike;
 
-p_engine init_engine(void);
-void clean_engine(p_engine engine);
+void init_engine(p_engine engine);
 
 #endif
 

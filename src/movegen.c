@@ -7,6 +7,9 @@
 #include <string.h>
 #include <assert.h>
 
+// TODO queen move table check for sliders in pin calculation as filter
+// TODO seperate pin and check etc branches with code gen
+
 static inline p_index pop_bit(p_bitboard *bitboard)
 {
         const p_index pos = CTZ(*bitboard);
@@ -421,9 +424,6 @@ size_t generate_moves(p_board board, p_move buffer[218])
                 p_bitboard ep_checkers = 0ULL;
 
                 BITBOARD_REMOVE_BIT(*enemy_ptr, ep_pawn);
-                const p_bitboard ep_bishop_pin_board = bishop_pins(
-                        board, ep_pin_rays, &ep_checkers
-                );
                 const p_bitboard ep_rook_pin_board = rook_pins(
                         board, ep_pin_rays, &ep_checkers
                 );
@@ -434,13 +434,17 @@ size_t generate_moves(p_board board, p_move buffer[218])
                         const p_index endpos = CTZ(ep_left);
                         const p_index startpos = board->player ? endpos + 9 : endpos - 7;
 
+                        const p_bitboard start_mask = BIT_MASK(startpos);
                         const p_bitboard end_mask = BIT_MASK(endpos);
+                        if (
+                                (ep_pawn_bit | start_mask) & bishop_pin_board &&
+                                !(end_mask & pin_rays[startpos])
+                        )
+                                goto ep_right;
+
                         if (!((end_mask | ep_pawn_bit) & check_ray))
                                 goto ep_right;
 
-                        const p_bitboard start_mask = BIT_MASK(startpos);
-                        if (start_mask & ep_bishop_pin_board && !(end_mask & ep_pin_rays[startpos]))
-                                goto ep_right;
                         if (start_mask & ep_rook_pin_board)
                                 goto ep_right;
 
@@ -458,13 +462,17 @@ ep_right:
                         const p_index endpos = CTZ(ep_right);
                         const p_index startpos = board->player ? endpos + 7 : endpos - 9;
 
+                        const p_bitboard start_mask = BIT_MASK(startpos);
                         const p_bitboard end_mask = BIT_MASK(endpos);
+                        if (
+                                (ep_pawn_bit | start_mask) & bishop_pin_board &&
+                                !(end_mask & pin_rays[startpos])
+                        )
+                                goto knight;
+
                         if (!((end_mask | ep_pawn_bit) & check_ray))
                                 goto knight;
 
-                        const p_bitboard start_mask = BIT_MASK(startpos);
-                        if (start_mask & ep_bishop_pin_board && !(end_mask & ep_pin_rays[startpos]))
-                                goto knight;
                         if (start_mask & ep_rook_pin_board)
                                 goto knight;
 

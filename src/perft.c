@@ -3,6 +3,7 @@
 #include "perft.h"
 #include "board.h"
 #include "movegen.h"
+#include "print.h"
 
 #include <stdio.h>
 #include <string.h>
