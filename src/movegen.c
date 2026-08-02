@@ -204,6 +204,352 @@ static constexpr p_index LONG_CASTLE_END_SQUARE[2] = { 2, 58 };
 static constexpr p_index SHORT_CASTLE_INT_SQUARE[2] = { 5, 61 };
 static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
 
+#define A \
+        const p_bitboard end_mask = BIT_MASK(endpos);
+#define B \
+        if (!(end_mask & check_ray)) \
+                continue;
+#define C \
+        const p_bitboard start_mask = BIT_MASK(startpos); \
+        if (start_mask & bishop_pin_board) \
+                continue; \
+        if (start_mask & rook_pin_board && !(end_mask & pin_rays[startpos])) \
+                continue;
+#define D \
+        const p_bitboard start_mask = BIT_MASK(startpos); \
+        if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos])) \
+                continue; \
+        if (start_mask & rook_pin_board) \
+                continue;
+#define E \
+        move_board &= check_ray;
+#define F
+#define G \
+        king:
+#define H(NAME) \
+        if (!((end_mask | ep_pawn_bit) & check_ray)) \
+                goto NAME ## _ep_right;
+#define I(NAME) \
+        const p_bitboard end_mask = BIT_MASK(endpos); \
+        if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos])) \
+                goto NAME ## _ep_right;
+#define J(NAME) \
+        if (!((end_mask | ep_pawn_bit) & check_ray)) \
+                goto NAME ## _knight;
+#define K(NAME) \
+        const p_bitboard end_mask = BIT_MASK(endpos); \
+        if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos])) \
+                goto NAME ## _knight;
+#define L \
+        const p_bitboard ep_pawn_bit = BIT_MASK(ep_pawn);
+#define M \
+        const p_bitboard mask = BIT_MASK(startpos); \
+        if (mask & rook_pin_board) \
+                continue;
+#define N \
+        const p_bitboard mask = BIT_MASK(startpos); \
+        if (mask & bishop_pin_board) \
+                continue;
+#define O \
+        if (mask & bishop_pin_board && !(BIT_MASK(endpos) & pin_rays[startpos])) \
+                continue;
+#define P \
+        if (mask & rook_pin_board && !(BIT_MASK(endpos) & pin_rays[startpos])) \
+                continue;
+
+#define PUSH_VANILLA_MOVE \
+                buffer[move_count++] = (p_move){ \
+                        .from = startpos, \
+                        .to = endpos \
+                };
+#define PUSH_EN_PASSANT \
+                buffer[move_count++] = (p_move){ \
+                        .from = startpos, \
+                        .to = endpos, \
+                        .flags = MOVE_EN_PASSANT \
+                };
+
+#define GEN_CASTLING \
+        if ( \
+                board->castling_rights & (W_LONG_CASTLE << (board->player * 2)) && \
+                !(board->all_pieces & LONG_CASTLE_MASK[board->player]) && \
+                !is_square_attacked(board, LONG_CASTLE_INT_SQUARE[board->player]) && \
+                !is_square_attacked(board, LONG_CASTLE_END_SQUARE[board->player]) \
+        ) { \
+                buffer[move_count++] = (p_move){ \
+                        .from = KING_START_SQUARE[board->player], \
+                        .to = LONG_CASTLE_END_SQUARE[board->player], \
+                        .flags = MOVE_LONG_CASTLE \
+                }; \
+        } \
+ \
+        if ( \
+                board->castling_rights & (W_SHORT_CASTLE << (board->player * 2)) && \
+                !(board->all_pieces & SHORT_CASTLE_MASK[board->player]) && \
+                !is_square_attacked(board, SHORT_CASTLE_INT_SQUARE[board->player]) && \
+                !is_square_attacked(board, SHORT_CASTLE_END_SQUARE[board->player]) \
+        ) { \
+                buffer[move_count++] = (p_move){ \
+                        .from = KING_START_SQUARE[board->player], \
+                        .to = SHORT_CASTLE_END_SQUARE[board->player], \
+                        .flags = MOVE_SHORT_CASTLE \
+                }; \
+        }
+
+#define GEN_MOVES(NAME) \
+        /* pawn */ \
+ \
+        p_bitboard single_push = board->player ? \
+                pawn >> 8 : \
+                pawn << 8; \
+        const p_bitboard PROMOTION_RANKS = RANK_1 | RANK_8; \
+        single_push &= ~board->all_pieces; \
+        p_bitboard single_push_promotion = single_push & PROMOTION_RANKS; \
+        p_bitboard double_push = single_push; \
+        single_push &= ~PROMOTION_RANKS; \
+ \
+        while (single_push) \
+        { \
+                const p_index endpos = pop_bit(&single_push); \
+                const p_index startpos = board->player ? endpos + 8 : endpos - 8; \
+ \
+                A B C \
+ \
+                PUSH_VANILLA_MOVE \
+        } \
+ \
+        while(single_push_promotion) \
+        { \
+                const p_index endpos = pop_bit(&single_push_promotion); \
+                const p_index startpos = board->player ? endpos + 8 : endpos - 8; \
+ \
+                A B C \
+ \
+                push_promotions(buffer, &move_count, startpos, endpos); \
+        } \
+ \
+        double_push = board->player ? \
+                (double_push >> 8) & RANK_5 : \
+                (double_push << 8) & RANK_4; \
+        double_push &= ~board->all_pieces; \
+ \
+        while (double_push) \
+        { \
+                const p_index endpos = pop_bit(&double_push); \
+                const p_index startpos = board->player ? endpos + 16 : endpos - 16; \
+ \
+                A B C \
+ \
+                PUSH_VANILLA_MOVE \
+        } \
+ \
+        p_bitboard capture_left = board->player ? \
+                pawn >> 9 : \
+                pawn << 7; \
+ \
+        capture_left &= ~FILE_H; \
+        const p_bitboard ep_bit = board->ep_square == NO_SQUARE ? 0ULL : BIT_MASK(board->ep_square); \
+        p_bitboard ep_left = capture_left & ep_bit; \
+        capture_left &= enemy; \
+        p_bitboard capture_left_promotion = capture_left & PROMOTION_RANKS; \
+        capture_left &= ~PROMOTION_RANKS; \
+ \
+        while (capture_left) \
+        { \
+                const p_index endpos = pop_bit(&capture_left); \
+                const p_index startpos = board->player ? endpos + 9 : endpos - 7; \
+ \
+                A B D \
+ \
+                PUSH_VANILLA_MOVE \
+        } \
+ \
+        while(capture_left_promotion) \
+        { \
+                const p_index endpos = pop_bit(&capture_left_promotion); \
+                const p_index startpos = board->player ? endpos + 9 : endpos - 7; \
+ \
+                A B D \
+ \
+                push_promotions(buffer, &move_count, startpos, endpos); \
+        } \
+ \
+        p_bitboard capture_right = board->player ? \
+                pawn >> 7 : \
+                pawn << 9; \
+        capture_right &= ~FILE_A;p_bitboard ep_right = capture_right & ep_bit; \
+        capture_right &= enemy; \
+        p_bitboard capture_right_promotion = capture_right & PROMOTION_RANKS; \
+        capture_right &= ~PROMOTION_RANKS; \
+ \
+ \
+        while (capture_right) \
+        { \
+                const p_index endpos = pop_bit(&capture_right); \
+                const p_index startpos = board->player ? endpos + 7 : endpos - 9; \
+ \
+                A B D \
+ \
+                PUSH_VANILLA_MOVE \
+        } \
+ \
+        while(capture_right_promotion) \
+        { \
+                const p_index endpos = pop_bit(&capture_right_promotion); \
+                const p_index startpos = board->player ? endpos + 7 : endpos - 9; \
+ \
+                A B D \
+ \
+                push_promotions(buffer, &move_count, startpos, endpos); \
+        } \
+ \
+        if (ep_bit) \
+        { \
+                p_bitboard *enemy_ptr = board->player ? \
+                        &board->white_pieces : \
+                        &board->black_pieces; \
+                const p_index ep_pawn = board->ep_square + BEHIND[board->player]; \
+                L \
+ \
+                p_bitboard ep_pin_rays[64]; \
+                memset(ep_pin_rays, 0, 64 * sizeof(p_bitboard)); \
+                p_bitboard ep_checkers = 0ULL; \
+ \
+                BITBOARD_REMOVE_BIT(*enemy_ptr, ep_pawn); \
+                const p_bitboard ep_rook_pin_board = rook_pins(board, ep_pin_rays, &ep_checkers); \
+                BITBOARD_ADD_BIT(*enemy_ptr, ep_pawn); \
+ \
+                if (ep_left) \
+                { \
+                        const p_index endpos = CTZ(ep_left); \
+                        const p_index startpos = board->player ? endpos + 9 : endpos - 7; \
+ \
+                        const p_bitboard start_mask = BIT_MASK(startpos); \
+ \
+                        I(NAME) H(NAME) \
+ \
+                        if (start_mask & ep_rook_pin_board) \
+                                goto NAME ## _ep_right; \
+ \
+                        PUSH_EN_PASSANT \
+                } \
+ \
+NAME ## _ep_right: \
+ \
+                if (ep_right) \
+                { \
+                        const p_index endpos = CTZ(ep_right); \
+                        const p_index startpos = board->player ? endpos + 7 : endpos - 9; \
+ \
+                        const p_bitboard start_mask = BIT_MASK(startpos); \
+ \
+                        K(NAME) J(NAME) \
+ \
+                        if (start_mask & ep_rook_pin_board) \
+                                goto NAME ## _knight; \
+ \
+                        PUSH_EN_PASSANT \
+ \
+                } \
+        } \
+ \
+NAME ## _knight: /* knight */ \
+ \
+        p_bitboard knight_board = board->bitboards[PIECE_WITH(KNIGHT, board->player)]; \
+ \
+        while (knight_board) \
+        { \
+                const p_index startpos = pop_bit(&knight_board); \
+ \
+                const p_bitboard mask = BIT_MASK(startpos); \
+                if (mask & bishop_pin_board || mask & rook_pin_board) \
+                        continue; \
+ \
+                p_bitboard move_board = KNIGHT_MOVE_TABLE[startpos] & ~friendly; \
+ \
+                E \
+ \
+                while (move_board) \
+                { \
+                        const p_index endpos = pop_bit(&move_board); \
+ \
+                        PUSH_VANILLA_MOVE \
+                } \
+        } \
+ \
+        /* bishop */ \
+ \
+        const p_bitboard queen_board = board->bitboards[PIECE_WITH(QUEEN, board->player)]; \
+ \
+        p_bitboard bishop_board = board->bitboards[PIECE_WITH(BISHOP, board->player)] | queen_board; \
+ \
+        while (bishop_board) \
+        { \
+                const p_index startpos = pop_bit(&bishop_board); \
+ \
+                const size_t index = _pext_u64(board->all_pieces, BISHOP_MOVE_TABLE[startpos]); \
+                p_bitboard move_board = BISHOP_PEXT_TABLE[startpos][index] & ~friendly; \
+ \
+                E M \
+ \
+                while (move_board) \
+                { \
+                        const p_index endpos = pop_bit(&move_board); \
+ \
+                        O \
+ \
+                        PUSH_VANILLA_MOVE \
+                } \
+        } \
+ \
+        /* rook */ \
+ \
+        p_bitboard rook_board = board->bitboards[PIECE_WITH(ROOK, board->player)] | queen_board; \
+ \
+        while (rook_board) \
+        { \
+                const p_index startpos = pop_bit(&rook_board); \
+ \
+                const size_t index = _pext_u64(board->all_pieces, ROOK_MOVE_TABLE[startpos]); \
+                p_bitboard move_board = ROOK_PEXT_TABLE[startpos][index] & ~friendly; \
+ \
+                E N \
+ \
+                while (move_board) \
+                { \
+                        const p_index endpos = pop_bit(&move_board); \
+ \
+                        P \
+ \
+                        PUSH_VANILLA_MOVE \
+                } \
+        } \
+ \
+ G /* king */ \
+ \
+        p_bitboard king_board = board->bitboards[PIECE_WITH(KING, board->player)]; \
+ \
+        while (king_board) \
+        { \
+                const p_index startpos = pop_bit(&king_board); \
+ \
+                p_bitboard move_board = KING_MOVE_TABLE[startpos] & ~friendly; \
+ \
+                while (move_board) \
+                { \
+                        const p_index endpos = pop_bit(&move_board); \
+ \
+                        if (!is_square_attacked(board, endpos)) { \
+                                buffer[move_count++] = (p_move){ \
+                                        .from = startpos, \
+                                        .to = endpos \
+                                }; \
+                        } \
+                } \
+        } \
+ \
+        F
+
 size_t generate_moves(p_board board, p_move buffer[218])
 {
         // pins and checks
@@ -221,10 +567,6 @@ size_t generate_moves(p_board board, p_move buffer[218])
                 BETWEEN_TABLE[king_pos][CTZ(checkers)] | checkers :
                 0xFFFFFFFFFFFFFFFFULL;
 
-        // movegen
-
-        size_t move_count = 0;
-
         const p_bitboard friendly = board->player ?
                 board->black_pieces :
                 board->white_pieces;
@@ -233,403 +575,57 @@ size_t generate_moves(p_board board, p_move buffer[218])
                 board->black_pieces;
         const p_bitboard pawn = board->bitboards[PIECE_WITH(PAWN, board->player)];
 
+        size_t move_count = 0;
+
         if (POP(checkers) == 2)
                 goto king;
 
-        // pawn
+        if (checkers) { // check
+
+                GEN_MOVES(normal)
+
+        } else if (bishop_pin_board | rook_pin_board) { // pin
+
+#undef B
+#undef E
+#undef F
+#undef G
+#undef H
+#undef J
+#undef L
+#define B
+#define E
+#define F GEN_CASTLING
+#define G
+#define H(NAME)
+#define J(NAME)
+#define L
+
+                GEN_MOVES(pin)
+
+        } else { // normal
+
+#undef A
+#undef C
+#undef D
+#undef I
+#undef K
+#undef M
+#undef N
+#undef O
+#undef P
+#define A
+#define C
+#define D
+#define I(NAME)
+#define K(NAME)
+#define M
+#define N
+#define O
+#define P
+
+                GEN_MOVES(check)
 
-        p_bitboard single_push = board->player ?
-                pawn >> 8 :
-                pawn << 8;
-        const p_bitboard PROMOTION_RANKS = RANK_1 | RANK_8;
-        single_push &= ~board->all_pieces;
-        p_bitboard single_push_promotion = single_push & PROMOTION_RANKS;
-        p_bitboard double_push = single_push;
-        single_push &= ~PROMOTION_RANKS;
-
-        while (single_push)
-        {
-                const p_index endpos = pop_bit(&single_push);
-                const p_index startpos = board->player ? endpos + 8 : endpos - 8;
-
-                const p_bitboard end_mask = BIT_MASK(endpos);
-                if (!(end_mask & check_ray))
-                        continue;
-
-                const p_bitboard start_mask = BIT_MASK(startpos);
-                if (start_mask & bishop_pin_board)
-                        continue;
-                if (start_mask & rook_pin_board && !(end_mask & pin_rays[startpos]))
-                        continue;
-
-
-                buffer[move_count++] = (p_move){
-                        .from = startpos,
-                        .to = endpos
-                };
-        }
-
-        while(single_push_promotion)
-        {
-                const p_index endpos = pop_bit(&single_push_promotion);
-                const p_index startpos = board->player ? endpos + 8 : endpos - 8;
-
-                const p_bitboard end_mask = BIT_MASK(endpos);
-                if (!(end_mask & check_ray))
-                        continue;
-
-                const p_bitboard start_mask = BIT_MASK(startpos);
-                if (start_mask & bishop_pin_board)
-                        continue;
-                if (start_mask & rook_pin_board && !(end_mask & pin_rays[startpos]))
-                        continue;
-
-                push_promotions(buffer, &move_count, startpos, endpos);
-        }
-
-        double_push = board->player ?
-                (double_push >> 8) & RANK_5 :
-                (double_push << 8) & RANK_4;
-        double_push &= ~board->all_pieces;
-
-        while (double_push)
-        {
-                const p_index endpos = pop_bit(&double_push);
-                const p_index startpos = board->player ? endpos + 16 : endpos - 16;
-
-                const p_bitboard end_mask = BIT_MASK(endpos);
-                if (!(end_mask & check_ray))
-                        continue;
-
-                const p_bitboard start_mask = BIT_MASK(startpos);
-                if (start_mask & bishop_pin_board)
-                        continue;
-                if (start_mask & rook_pin_board && !(end_mask & pin_rays[startpos]))
-                        continue;
-
-                buffer[move_count++] = (p_move){
-                        .from = startpos,
-                        .to = endpos
-                };
-        }
-
-        p_bitboard capture_left = board->player ?
-                pawn >> 9 :
-                pawn << 7;
-
-        capture_left &= ~FILE_H;
-        const p_bitboard ep_bit = board->ep_square == NO_SQUARE ? 0ULL : BIT_MASK(board->ep_square);
-        p_bitboard ep_left = capture_left & ep_bit;
-        capture_left &= enemy;
-        p_bitboard capture_left_promotion = capture_left & PROMOTION_RANKS;
-        capture_left &= ~PROMOTION_RANKS;
-
-        while (capture_left)
-        {
-                const p_index endpos = pop_bit(&capture_left);
-                const p_index startpos = board->player ? endpos + 9 : endpos - 7;
-
-                const p_bitboard end_mask = BIT_MASK(endpos);
-                if (!(end_mask & check_ray))
-                        continue;
-
-                const p_bitboard start_mask = BIT_MASK(startpos);
-                if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos]))
-                        continue;
-                if (start_mask & rook_pin_board)
-                        continue;
-
-                buffer[move_count++] = (p_move){
-                        .from = startpos,
-                        .to = endpos
-                };
-        }
-
-        while(capture_left_promotion)
-        {
-                const p_index endpos = pop_bit(&capture_left_promotion);
-                const p_index startpos = board->player ? endpos + 9 : endpos - 7;
-
-                const p_bitboard end_mask = BIT_MASK(endpos);
-                if (!(end_mask & check_ray))
-                        continue;
-
-                const p_bitboard start_mask = BIT_MASK(startpos);
-                if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos]))
-                        continue;
-                if (start_mask & rook_pin_board)
-                        continue;
-
-                push_promotions(buffer, &move_count, startpos, endpos);
-        }
-
-        p_bitboard capture_right = board->player ?
-                pawn >> 7 :
-                pawn << 9;
-        capture_right &= ~FILE_A;p_bitboard ep_right = capture_right & ep_bit;
-        capture_right &= enemy;
-        p_bitboard capture_right_promotion = capture_right & PROMOTION_RANKS;
-        capture_right &= ~PROMOTION_RANKS;
-
-
-        while (capture_right)
-        {
-                const p_index endpos = pop_bit(&capture_right);
-                const p_index startpos = board->player ? endpos + 7 : endpos - 9;
-
-                const p_bitboard end_mask = BIT_MASK(endpos);
-                if (!(end_mask & check_ray))
-                        continue;
-
-                const p_bitboard start_mask = BIT_MASK(startpos);
-                if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos]))
-                        continue;
-                if (start_mask & rook_pin_board)
-                        continue;
-
-                buffer[move_count++] = (p_move){
-                        .from = startpos,
-                        .to = endpos
-                };
-        }
-
-        while(capture_right_promotion)
-        {
-                const p_index endpos = pop_bit(&capture_right_promotion);
-                const p_index startpos = board->player ? endpos + 7 : endpos - 9;
-
-                const p_bitboard end_mask = BIT_MASK(endpos);
-                if (!(end_mask & check_ray))
-                        continue;
-
-                const p_bitboard start_mask = BIT_MASK(startpos);
-                if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos]))
-                        continue;
-                if (start_mask & rook_pin_board)
-                        continue;
-
-                push_promotions(buffer, &move_count, startpos, endpos);
-        }
-
-        if (ep_bit)
-        {
-                p_bitboard *enemy_ptr = board->player ?
-                        &board->white_pieces :
-                        &board->black_pieces;
-                const p_index ep_pawn = board->ep_square + BEHIND[board->player];
-                const p_bitboard ep_pawn_bit = BIT_MASK(ep_pawn);
-
-                p_bitboard ep_pin_rays[64];
-                memset(ep_pin_rays, 0, 64 * sizeof(p_bitboard));
-                p_bitboard ep_checkers = 0ULL;
-
-                BITBOARD_REMOVE_BIT(*enemy_ptr, ep_pawn);
-                const p_bitboard ep_rook_pin_board = rook_pins(
-                        board, ep_pin_rays, &ep_checkers
-                );
-                BITBOARD_ADD_BIT(*enemy_ptr, ep_pawn);
-
-                if (ep_left)
-                {
-                        const p_index endpos = CTZ(ep_left);
-                        const p_index startpos = board->player ? endpos + 9 : endpos - 7;
-
-                        const p_bitboard start_mask = BIT_MASK(startpos);
-                        const p_bitboard end_mask = BIT_MASK(endpos);
-                        if (
-                                (ep_pawn_bit | start_mask) & bishop_pin_board &&
-                                !(end_mask & pin_rays[startpos])
-                        )
-                                goto ep_right;
-
-                        if (!((end_mask | ep_pawn_bit) & check_ray))
-                                goto ep_right;
-
-                        if (start_mask & ep_rook_pin_board)
-                                goto ep_right;
-
-                        buffer[move_count++] = (p_move){
-                                .from = startpos,
-                                .to = endpos,
-                                .flags = MOVE_EN_PASSANT
-                        };
-                }
-
-ep_right:
-
-                if (ep_right)
-                {
-                        const p_index endpos = CTZ(ep_right);
-                        const p_index startpos = board->player ? endpos + 7 : endpos - 9;
-
-                        const p_bitboard start_mask = BIT_MASK(startpos);
-                        const p_bitboard end_mask = BIT_MASK(endpos);
-                        if (
-                                (ep_pawn_bit | start_mask) & bishop_pin_board &&
-                                !(end_mask & pin_rays[startpos])
-                        )
-                                goto knight;
-
-                        if (!((end_mask | ep_pawn_bit) & check_ray))
-                                goto knight;
-
-                        if (start_mask & ep_rook_pin_board)
-                                goto knight;
-
-                        buffer[move_count++] = (p_move){
-                                .from = startpos,
-                                .to = endpos,
-                                .flags = MOVE_EN_PASSANT
-                        };
-
-                }
-        }
-
-knight:
-
-        // knight
-
-        p_bitboard knight_board = board->bitboards[PIECE_WITH(KNIGHT, board->player)];
-
-        while (knight_board)
-        {
-                const p_index startpos = pop_bit(&knight_board);
-
-                const p_bitboard mask = BIT_MASK(startpos);
-                if (mask & bishop_pin_board || mask & rook_pin_board)
-                        continue;
-
-                p_bitboard move_board = KNIGHT_MOVE_TABLE[startpos] & ~friendly;
-
-                move_board &= check_ray;
-
-                while (move_board)
-                {
-                        const p_index endpos = pop_bit(&move_board);
-
-                        buffer[move_count++] = (p_move){
-                                .from = startpos,
-                                .to = endpos
-                        };
-                }
-        }
-
-        // bishop
-
-        const p_bitboard queen_board = board->bitboards[PIECE_WITH(QUEEN, board->player)];
-
-        p_bitboard bishop_board = board->bitboards[PIECE_WITH(BISHOP, board->player)] | queen_board;
-
-        while (bishop_board)
-        {
-                const p_index startpos = pop_bit(&bishop_board);
-
-                const size_t index = _pext_u64(board->all_pieces, BISHOP_MOVE_TABLE[startpos]);
-                p_bitboard move_board = BISHOP_PEXT_TABLE[startpos][index] & ~friendly;
-
-                const p_bitboard mask = BIT_MASK(startpos);
-                if (mask & rook_pin_board)
-                        continue;
-
-                move_board &= check_ray;
-
-                while (move_board)
-                {
-                        const p_index endpos = pop_bit(&move_board);
-
-                        if (mask & bishop_pin_board && !(BIT_MASK(endpos) & pin_rays[startpos]))
-                                continue;
-
-                        buffer[move_count++] = (p_move){
-                                .from = startpos,
-                                .to = endpos
-                        };
-                }
-        }
-
-        // rook
-
-        p_bitboard rook_board = board->bitboards[PIECE_WITH(ROOK, board->player)] | queen_board;
-
-        while (rook_board)
-        {
-                const p_index startpos = pop_bit(&rook_board);
-
-                const size_t index = _pext_u64(board->all_pieces, ROOK_MOVE_TABLE[startpos]);
-                p_bitboard move_board = ROOK_PEXT_TABLE[startpos][index] & ~friendly;
-
-                const p_bitboard mask = BIT_MASK(startpos);
-                if (mask & bishop_pin_board)
-                        continue;
-
-                move_board &= check_ray;
-
-                while (move_board)
-                {
-                        const p_index endpos = pop_bit(&move_board);
-
-                        if (!(BIT_MASK(endpos) & check_ray))
-                                continue;
-
-                        if (mask & rook_pin_board && !(BIT_MASK(endpos) & pin_rays[startpos]))
-                                continue;
-
-                        buffer[move_count++] = (p_move){
-                                .from = startpos,
-                                .to = endpos
-                        };
-                }
-        }
-
-king:
-
-        p_bitboard king_board = board->bitboards[PIECE_WITH(KING, board->player)];
-
-        while (king_board)
-        {
-                const p_index startpos = pop_bit(&king_board);
-
-                p_bitboard move_board = KING_MOVE_TABLE[startpos] & ~friendly;
-
-                while (move_board)
-                {
-                        const p_index endpos = pop_bit(&move_board);
-
-                        if (!is_square_attacked(board, endpos)) {
-                                buffer[move_count++] = (p_move){
-                                        .from = startpos,
-                                        .to = endpos
-                                };
-                        }
-                }
-        }
-
-        if (!checkers) {
-                if (
-                        board->castling_rights & (W_LONG_CASTLE << (board->player * 2)) &&
-                        !(board->all_pieces & LONG_CASTLE_MASK[board->player]) &&
-                        !is_square_attacked(board, LONG_CASTLE_INT_SQUARE[board->player]) &&
-                        !is_square_attacked(board, LONG_CASTLE_END_SQUARE[board->player])
-                ) {
-                        buffer[move_count++] = (p_move){
-                                .from = KING_START_SQUARE[board->player],
-                                .to = LONG_CASTLE_END_SQUARE[board->player],
-                                .flags = MOVE_LONG_CASTLE
-                        };
-                }
-
-                if (
-                        board->castling_rights & (W_SHORT_CASTLE << (board->player * 2)) &&
-                        !(board->all_pieces & SHORT_CASTLE_MASK[board->player]) &&
-                        !is_square_attacked(board, SHORT_CASTLE_INT_SQUARE[board->player]) &&
-                        !is_square_attacked(board, SHORT_CASTLE_END_SQUARE[board->player])
-                ) {
-                        buffer[move_count++] = (p_move){
-                                .from = KING_START_SQUARE[board->player],
-                                .to = SHORT_CASTLE_END_SQUARE[board->player],
-                                .flags = MOVE_SHORT_CASTLE
-                        };
-                }
         }
 
         return move_count;
