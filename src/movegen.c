@@ -533,7 +533,7 @@ size_t generate_moves(p_board board, p_move buffer[218])
 
         if (checkers) { // check
 
-                GEN_MOVES(normal);
+                GEN_MOVES(check);
 
         } else if (bishop_pin_board | rook_pin_board) { // pin
 
@@ -571,7 +571,7 @@ size_t generate_moves(p_board board, p_move buffer[218])
 #define M
 #define N
 
-                GEN_MOVES(check);
+                GEN_MOVES(normal);
 
         }
 
