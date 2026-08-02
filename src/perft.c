@@ -3,11 +3,12 @@
 #include "perft.h"
 #include "board.h"
 #include "movegen.h"
-#include "print.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+
+#define BULK_COUNT 0
 
 size_t count(p_board board, size_t depth)
 {
@@ -15,7 +16,11 @@ size_t count(p_board board, size_t depth)
         const size_t move_count = generate_moves(board, buffer);
 
         if (depth == 0)
+#if BULK_COUNT
                 return move_count;
+#else
+                return 1;
+#endif
 
         size_t sum = 0;
         for (size_t i = 0; i < move_count; i++)
@@ -58,7 +63,11 @@ void perft(char *fen, size_t depth)
         {
                 const double before = now();
 
+#if BULK_COUNT
                 const size_t nodes = count(board, i);
+#else
+                const size_t nodes = count(board, i + 1);
+#endif
 
                 const double after = now();
 
