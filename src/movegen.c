@@ -8,7 +8,7 @@
 #include <assert.h>
 
 // TODO queen move table check for sliders in pin calculation as filter
-// TODO seperate pin and check etc branches with code gen
+// TODO do same macro bs for ep pin / no pin route
 
 static inline p_index pop_bit(p_bitboard *bitboard)
 {
