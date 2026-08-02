@@ -189,20 +189,20 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
         const p_bitboard end_mask = BIT_MASK(endpos); \
         if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos])) \
                 goto LABEL;
-#define L \
+#define J \
         const p_bitboard ep_pawn_bit = BIT_MASK(ep_pawn);
-#define M \
+#define K \
         const p_bitboard mask = BIT_MASK(startpos); \
         if (mask & rook_pin_board) \
                 continue;
-#define N \
+#define L \
         const p_bitboard mask = BIT_MASK(startpos); \
         if (mask & bishop_pin_board) \
                 continue;
-#define O \
+#define M \
         if (mask & bishop_pin_board && !(BIT_MASK(endpos) & pin_rays[startpos])) \
                 continue;
-#define P \
+#define N \
         if (mask & rook_pin_board && !(BIT_MASK(endpos) & pin_rays[startpos])) \
                 continue;
 
@@ -358,7 +358,7 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
                         &board->white_pieces : \
                         &board->black_pieces; \
                 const p_index ep_pawn = board->ep_square + BEHIND[board->player]; \
-                L \
+                J \
  \
                 p_bitboard ep_pin_rays[64]; \
                 memset(ep_pin_rays, 0, 64 * sizeof(p_bitboard)); \
@@ -439,13 +439,13 @@ NAME ## _knight: /* knight */ \
                 const size_t index = _pext_u64(board->all_pieces, BISHOP_MOVE_TABLE[startpos]); \
                 p_bitboard move_board = BISHOP_PEXT_TABLE[startpos][index] & ~friendly; \
  \
-                E M \
+                E K \
  \
                 while (move_board) \
                 { \
                         const p_index endpos = pop_bit(&move_board); \
  \
-                        O \
+                        M \
  \
                         PUSH_VANILLA_MOVE \
                 } \
@@ -462,13 +462,13 @@ NAME ## _knight: /* knight */ \
                 const size_t index = _pext_u64(board->all_pieces, ROOK_MOVE_TABLE[startpos]); \
                 p_bitboard move_board = ROOK_PEXT_TABLE[startpos][index] & ~friendly; \
  \
-                E N \
+                E L \
  \
                 while (move_board) \
                 { \
                         const p_index endpos = pop_bit(&move_board); \
  \
-                        P \
+                        N \
  \
                         PUSH_VANILLA_MOVE \
                 } \
@@ -542,13 +542,13 @@ size_t generate_moves(p_board board, p_move buffer[218])
 #undef F
 #undef G
 #undef H
-#undef L
+#undef J
 #define B
 #define E
 #define F GEN_CASTLING
 #define G
 #define H(LABEL)
-#define L
+#define J
 
                 GEN_MOVES(pin);
 
@@ -558,18 +558,18 @@ size_t generate_moves(p_board board, p_move buffer[218])
 #undef C
 #undef D
 #undef I
+#undef K
+#undef L
 #undef M
 #undef N
-#undef O
-#undef P
 #define A
 #define C
 #define D
 #define I(LABEL)
+#define K
+#define L
 #define M
 #define N
-#define O
-#define P
 
                 GEN_MOVES(check);
 
