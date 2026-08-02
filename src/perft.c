@@ -8,7 +8,7 @@
 #include <string.h>
 #include <time.h>
 
-#define BULK_COUNT 0
+#define BULK_COUNT 1
 
 size_t count(p_board board, size_t depth)
 {
