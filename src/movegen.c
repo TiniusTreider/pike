@@ -182,20 +182,13 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
 #define F
 #define G \
         king:
-#define H(NAME) \
+#define H(LABEL) \
         if (!((end_mask | ep_pawn_bit) & check_ray)) \
-                goto NAME ## _ep_right;
-#define I(NAME) \
+                goto LABEL;
+#define I(LABEL) \
         const p_bitboard end_mask = BIT_MASK(endpos); \
         if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos])) \
-                goto NAME ## _ep_right;
-#define J(NAME) \
-        if (!((end_mask | ep_pawn_bit) & check_ray)) \
-                goto NAME ## _knight;
-#define K(NAME) \
-        const p_bitboard end_mask = BIT_MASK(endpos); \
-        if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos])) \
-                goto NAME ## _knight;
+                goto LABEL;
 #define L \
         const p_bitboard ep_pawn_bit = BIT_MASK(ep_pawn);
 #define M \
@@ -382,7 +375,7 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
  \
                         const p_bitboard start_mask = BIT_MASK(startpos); \
  \
-                        I(NAME) H(NAME) \
+                        I(NAME ## _ep_right) H(NAME ## _ep_right) \
  \
                         if (start_mask & ep_rook_pin_board) \
                                 goto NAME ## _ep_right; \
@@ -399,7 +392,7 @@ NAME ## _ep_right: \
  \
                         const p_bitboard start_mask = BIT_MASK(startpos); \
  \
-                        K(NAME) J(NAME) \
+                        I(NAME ## _knight) H(NAME ## _knight) \
  \
                         if (start_mask & ep_rook_pin_board) \
                                 goto NAME ## _knight; \
@@ -549,14 +542,12 @@ size_t generate_moves(p_board board, p_move buffer[218])
 #undef F
 #undef G
 #undef H
-#undef J
 #undef L
 #define B
 #define E
 #define F GEN_CASTLING
 #define G
-#define H(NAME)
-#define J(NAME)
+#define H(LABEL)
 #define L
 
                 GEN_MOVES(pin);
@@ -567,7 +558,6 @@ size_t generate_moves(p_board board, p_move buffer[218])
 #undef C
 #undef D
 #undef I
-#undef K
 #undef M
 #undef N
 #undef O
@@ -575,8 +565,7 @@ size_t generate_moves(p_board board, p_move buffer[218])
 #define A
 #define C
 #define D
-#define I(NAME)
-#define K(NAME)
+#define I(LABEL)
 #define M
 #define N
 #define O
