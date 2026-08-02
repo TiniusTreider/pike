@@ -7,8 +7,6 @@
 #include <string.h>
 #include <assert.h>
 
-// TODO do same macro bs for ep pin / no pin route
-
 static inline p_index pop_bit(p_bitboard *bitboard)
 {
         const p_index pos = CTZ(*bitboard);
@@ -18,33 +16,25 @@ static inline p_index pop_bit(p_bitboard *bitboard)
         return pos;
 }
 
+#define PROMOTION_PIECES_X \
+        X(KNIGHT) \
+        X(BISHOP) \
+        X(ROOK) \
+        X(QUEEN)
+
 static inline void push_promotions(p_move *buffer, size_t *move_count, p_index from, p_index to)
 {
-        buffer[*move_count] = (p_move){
-                .from = from,
-                .to = to,
-                .promotion = KNIGHT,
-                .flags = MOVE_PROMOTION
+#define X(PIECE) \
+        buffer[(*move_count)++] = (p_move){ \
+                .from = from, \
+                .to = to, \
+                .promotion = PIECE, \
+                .flags = MOVE_PROMOTION \
         };
-        buffer[*move_count + 1] = (p_move){
-                .from = from,
-                .to = to,
-                .promotion = BISHOP,
-                .flags = MOVE_PROMOTION
-        };
-        buffer[*move_count + 2] = (p_move){
-                .from = from,
-                .to = to,
-                .promotion = ROOK,
-                .flags = MOVE_PROMOTION
-        };
-        buffer[*move_count + 3] = (p_move){
-                .from = from,
-                .to = to,
-                .promotion = QUEEN,
-                .flags = MOVE_PROMOTION
-        };
-        *move_count += 4;
+
+        PROMOTION_PIECES_X
+
+#undef X
 }
 
 static inline p_bitboard is_square_attacked(p_board board, p_index square)
