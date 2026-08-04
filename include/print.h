@@ -4,6 +4,7 @@
 #include "board.h"
 
 void print_move(p_move move);
+p_move parse_move(p_board board, char *string);
 void print_board(p_board board);
 void print_bitboard(p_bitboard board);
 

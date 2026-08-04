@@ -233,21 +233,12 @@ void unmake_move(p_board board, p_move move, p_unmake data)
 
 p_board init_board(char *fen)
 {
-        p_board board = smalloc(sizeof(struct board));
+        p_board board = smalloc(sizeof(struct board_struct));
 
         set_board(board, fen);
 
         return board;
 }
-
-static constexpr p_piece_type ALGEBRAIC['R' - 'B' + 1] = {
-        BISHOP, 0, 0, 0, 0, 0, 0, 0, 0,
-        KING, 0, 0,
-        KNIGHT, 0,
-        PAWN,
-        QUEEN,
-        ROOK
-};
 
 #define DELIM " \t"
 #define FEN_BUFFER_SIZE 128

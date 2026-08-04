@@ -1,13 +1,16 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-typedef struct {
-        // TODO
+#include "board.h"
+
+typedef struct engine_struct {
+        p_board board;
 }* p_engine;
 
 extern p_engine pike;
 
-void init_engine(p_engine engine);
+p_engine init_engine(void);
+void clean_engine(p_engine engine);
 
 #endif
 

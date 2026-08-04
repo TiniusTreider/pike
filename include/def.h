@@ -43,5 +43,7 @@ static constexpr p_bitboard RANK_8 = RANK_1 << 56;
 
 #define VERSION "pike 2.0"
 
+#define NULL_MOVE (p_move){ .from = NO_SQUARE }
+
 #endif
 

@@ -3,7 +3,7 @@
 
 #include "def.h"
 
-struct board {
+struct board_struct {
         p_color player;
 
         p_piece mailbox[64];

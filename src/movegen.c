@@ -336,9 +336,7 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
         { \
                 const p_index endpos = pop_bit(&capture_right); \
                 const p_index startpos = board->player ? endpos + 7 : endpos - 9; \
- \
                 A B D \
- \
                 PUSH_VANILLA_MOVE \
         } \
  \
@@ -346,9 +344,7 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
         { \
                 const p_index endpos = pop_bit(&capture_right_promotion); \
                 const p_index startpos = board->player ? endpos + 7 : endpos - 9; \
- \
                 A B D \
- \
                 push_promotions(buffer, &move_count, startpos, endpos); \
         } \
  \
@@ -372,14 +368,10 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
                 { \
                         const p_index endpos = CTZ(ep_left); \
                         const p_index startpos = board->player ? endpos + 9 : endpos - 7; \
- \
                         const p_bitboard start_mask = BIT_MASK(startpos); \
- \
                         I(NAME ## _ep_right) H(NAME ## _ep_right) \
- \
                         if (start_mask & ep_rook_pin_board) \
                                 goto NAME ## _ep_right; \
- \
                         PUSH_EN_PASSANT \
                 } \
  \
@@ -389,14 +381,10 @@ NAME ## _ep_right: \
                 { \
                         const p_index endpos = CTZ(ep_right); \
                         const p_index startpos = board->player ? endpos + 7 : endpos - 9; \
- \
                         const p_bitboard start_mask = BIT_MASK(startpos); \
- \
                         I(NAME ## _knight) H(NAME ## _knight) \
- \
                         if (start_mask & ep_rook_pin_board) \
                                 goto NAME ## _knight; \
- \
                         PUSH_EN_PASSANT \
  \
                 } \
@@ -409,19 +397,14 @@ NAME ## _knight: /* knight */ \
         while (knight_board) \
         { \
                 const p_index startpos = pop_bit(&knight_board); \
- \
                 const p_bitboard mask = BIT_MASK(startpos); \
                 if (mask & bishop_pin_board || mask & rook_pin_board) \
                         continue; \
- \
                 p_bitboard move_board = KNIGHT_MOVE_TABLE[startpos] & ~friendly; \
- \
                 E \
- \
                 while (move_board) \
                 { \
                         const p_index endpos = pop_bit(&move_board); \
- \
                         PUSH_VANILLA_MOVE \
                 } \
         } \
@@ -435,18 +418,13 @@ NAME ## _knight: /* knight */ \
         while (bishop_board) \
         { \
                 const p_index startpos = pop_bit(&bishop_board); \
- \
                 const size_t index = _pext_u64(board->all_pieces, BISHOP_MOVE_TABLE[startpos]); \
                 p_bitboard move_board = BISHOP_PEXT_TABLE[startpos][index] & ~friendly; \
- \
                 E K \
- \
                 while (move_board) \
                 { \
                         const p_index endpos = pop_bit(&move_board); \
- \
                         M \
- \
                         PUSH_VANILLA_MOVE \
                 } \
         } \
@@ -458,18 +436,13 @@ NAME ## _knight: /* knight */ \
         while (rook_board) \
         { \
                 const p_index startpos = pop_bit(&rook_board); \
- \
                 const size_t index = _pext_u64(board->all_pieces, ROOK_MOVE_TABLE[startpos]); \
                 p_bitboard move_board = ROOK_PEXT_TABLE[startpos][index] & ~friendly; \
- \
                 E L \
- \
                 while (move_board) \
                 { \
                         const p_index endpos = pop_bit(&move_board); \
- \
                         N \
- \
                         PUSH_VANILLA_MOVE \
                 } \
         } \
@@ -481,18 +454,12 @@ NAME ## _knight: /* knight */ \
         while (king_board) \
         { \
                 const p_index startpos = pop_bit(&king_board); \
- \
                 p_bitboard move_board = KING_MOVE_TABLE[startpos] & ~friendly; \
- \
                 while (move_board) \
                 { \
                         const p_index endpos = pop_bit(&move_board); \
- \
                         if (!is_square_attacked(board, endpos)) { \
-                                buffer[move_count++] = (p_move){ \
-                                        .from = startpos, \
-                                        .to = endpos \
-                                }; \
+                                PUSH_VANILLA_MOVE \
                         } \
                 } \
         } \

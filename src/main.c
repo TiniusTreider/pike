@@ -18,12 +18,12 @@
         "        run a benchmark with the given position and depth\n" \
         "\n"
 
+p_engine pike;
+
 int main(int argc, char **argv)
 {
         if (argc == 1) {
-                p_engine pike;
-                init_engine(pike);
-
+                pike = init_engine();
                 uci();
         } else if (argc == 4) {
                 if (strcmp(argv[1], PERFT_OPTION) == 0)

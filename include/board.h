@@ -3,7 +3,7 @@
 
 #include "def.h"
 
-typedef struct board* p_board;
+typedef struct board_struct* p_board;
 
 typedef struct {
         p_index from;

@@ -1,8 +1,10 @@
 #include "print.h"
 #include "macros.h"
 #include "structboard.h"
+#include "tables.h"
 
 #include <stdio.h>
+#include <string.h>
 
 static constexpr char PIECE_CHARS[6] = { 'p', 'b', 'n', 'r', 'k', 'q' };
 
@@ -26,6 +28,56 @@ static const char *piece_strings[6] = {
         "♟ ", "♞ ", "♝ ", "♜ ", "♛ ", "♚ "
 };
 
+#define ASSERT(CONDITION) do { if (!(CONDITION)) return RETURN; } while (false)
+#define RETURN NO_SQUARE
+
+static inline p_index parse_square(char *string)
+{
+        const char file = string[0];
+        const char rank = string[1];
+        ASSERT(file >= 'a' && file <= 'h' && rank >= '1' && rank <= '8');
+
+        return file - 'a' + (rank - '1') * 8;
+}
+
+#undef RETURN
+#define RETURN NULL_MOVE
+
+p_move parse_move(p_board board, char *string)
+{
+        size_t length = strlen(string);
+        ASSERT(length == 4 || length == 5);
+
+        p_move move;
+
+        ASSERT((move.from = parse_square(string)) != NO_SQUARE);
+        ASSERT((move.to = parse_square(string)) != NO_SQUARE);
+
+        if (length == 5)
+                move.promotion = ALGEBRAIC[string[4] - 'b'];
+
+        const p_piece_type piece = PIECE_OF(board->mailbox[move.from]);
+        if (piece == PAWN) {
+                if (FILE_OF(move.from) != FILE_OF(move.to) && board->mailbox[move.to] == EMPTY)
+                        move.flags = MOVE_EN_PASSANT;
+
+                else if (RANK_OF(move.to) == 0 || RANK_OF(move.to) == 7)
+                        move.flags = MOVE_PROMOTION;
+                if (FILE_OF(move.from) != FILE_OF(move.to) && board->mailbox[move.to] == EMPTY)
+                        move.flags = MOVE_EN_PASSANT;
+        } else if (piece == KING) {
+                const p_index file = FILE_OF(move.to);
+                if (file - 3 > 2) {
+                        move.flags = file > 4 ? MOVE_SHORT_CASTLE : MOVE_LONG_CASTLE;
+                }
+        }
+
+        return move;
+}
+
+#undef RETURN
+#undef ASSERT_PARSE
+
 #define LIGHT_SQUARE "\033[48;5;179m"
 #define DARK_SQUARE "\033[48;5;130m"
 #define LIGHT_PIECE "\033[38;5;253m"
@@ -44,7 +96,7 @@ static inline void draw_square(p_piece piece, p_color square_color)
         printf("%s\033[0m", piece_strings[PIECE_OF(piece)]);
 }
 
-void print_board(struct board *board)
+void print_board(p_board board)
 {
         for (int j = 0; j < 64; j++)
         {

@@ -2,6 +2,9 @@
 #include "error.h"
 #include "macros.h"
 #include "def.h"
+#include "board.h"
+#include "engine.h"
+#include "print.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -74,17 +77,17 @@ void position_c(void)
                 return;
 
         if (strcmp(token, "startpos") == 0) {
-                // set global board to STARTPOS_FEN
+                pike->board = init_board(STARTPOS_FEN);
                 strtok(NULL, DELIM);
         } else if (strcmp(token, "kiwipete") == 0) {
-                // set global board to KIWIPETE_FEN
+                pike->board = init_board(KIWIPETE_FEN);
                 strtok(NULL, DELIM);
         } else if (strcmp(token, "fen") == 0) {
                 token = strtok(NULL, DELIM);
                 if (!token)
                         return;
 
-                // set global board to FEN
+                pike->board = init_board(token);
 
                 for (int i = 0; i < 6; i++)
                 {
@@ -99,7 +102,10 @@ void position_c(void)
         token = strtok(NULL, DELIM);
         while (token)
         {
-                // apply token as move
+                const p_move move = parse_move(pike->board, token);
+                if (IS_NULL_MOVE(move))
+                        return;
+                (void)make_move(pike->board, move);
 
                 token = strtok(NULL, DELIM);
         }

@@ -5,6 +5,15 @@
 
 #include <stdint.h>
 
+static constexpr p_piece_type ALGEBRAIC['R' - 'B' + 1] = {
+        BISHOP, 0, 0, 0, 0, 0, 0, 0, 0,
+        KING, 0, 0,
+        KNIGHT, 0,
+        PAWN,
+        QUEEN,
+        ROOK
+};
+
 extern const uint8_t CASTLING_RIGHTS_TABLE[64];
 
 extern const p_bitboard KNIGHT_MOVE_TABLE[64];
