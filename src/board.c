@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "board.h"
 #include "structboard.h"
 #include "macros.h"
@@ -251,7 +253,8 @@ void set_board(p_board board, char *fen_string)
                 return;
         memcpy(fen, fen_string, size + 1);
 
-        char *fen_position = strtok(fen, DELIM);
+        char *strtok_ptr;
+        char *fen_position = strtok_r(fen, DELIM, &strtok_ptr);
         if (*fen_position == '\0' || fen_position == NULL)
                 return;
 
@@ -291,7 +294,7 @@ void set_board(p_board board, char *fen_string)
                 square++;
         } while (*++fen_position);
 
-        char *fen_stm = strtok(NULL, DELIM);
+        char *fen_stm = strtok_r(NULL, DELIM, &strtok_ptr);
         if (*fen_stm == '\0' || fen_stm == NULL)
                 return;
 
@@ -303,7 +306,7 @@ void set_board(p_board board, char *fen_string)
                 return;
         }
 
-        char *fen_castling_rights = strtok(NULL, DELIM);
+        char *fen_castling_rights = strtok_r(NULL, DELIM, &strtok_ptr);
         if (*fen_castling_rights == '\0' || fen_castling_rights == NULL)
                 return;
 
@@ -327,7 +330,7 @@ void set_board(p_board board, char *fen_string)
                 }
         } while (*++fen_castling_rights);
 
-        char *fen_ep_square = strtok(NULL, DELIM);
+        char *fen_ep_square = strtok_r(NULL, DELIM, &strtok_ptr);
         if (*fen_ep_square == '\0' || fen_ep_square == NULL)
                 return;
 

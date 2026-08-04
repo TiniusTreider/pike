@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "uci.h"
 #include "error.h"
 #include "macros.h"
@@ -15,6 +17,8 @@ bool should_continue = true;
 #define DELIM " \t\r\n"
 
 // engine to gui
+
+static char *strtok_ptr;
 
 #define SEND(MESSAGE) do { printf(MESSAGE "\n"); fflush(stdout); } while (false)
 
@@ -72,18 +76,18 @@ void ucinewgame_c(void)
 
 void position_c(void)
 {
-        char *token = strtok(NULL, DELIM);
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
         if (!token)
                 return;
 
         if (strcmp(token, "startpos") == 0) {
                 pike->board = init_board(STARTPOS_FEN);
-                strtok(NULL, DELIM);
+                strtok_r(NULL, DELIM, &strtok_ptr);
         } else if (strcmp(token, "kiwipete") == 0) {
                 pike->board = init_board(KIWIPETE_FEN);
-                strtok(NULL, DELIM);
+                strtok_r(NULL, DELIM, &strtok_ptr);
         } else if (strcmp(token, "fen") == 0) {
-                token = strtok(NULL, DELIM);
+                token = strtok_r(NULL, DELIM, &strtok_ptr);
                 if (!token)
                         return;
 
@@ -91,7 +95,7 @@ void position_c(void)
 
                 for (int i = 0; i < 6; i++)
                 {
-                        if (!(token = strtok(NULL, DELIM)))
+                        if (!(token = strtok_r(NULL, DELIM, &strtok_ptr)))
                                 return;
                 }
         }
@@ -99,7 +103,7 @@ void position_c(void)
         if (strcmp(token, "moves") != 0)
                 return;
 
-        token = strtok(NULL, DELIM);
+        token = strtok_r(NULL, DELIM, &strtok_ptr);
         while (token)
         {
                 const p_move move = parse_move(pike->board, token);
@@ -107,7 +111,7 @@ void position_c(void)
                         return;
                 (void)make_move(pike->board, move);
 
-                token = strtok(NULL, DELIM);
+                token = strtok_r(NULL, DELIM, &strtok_ptr);
         }
 }
 
@@ -131,20 +135,34 @@ void quit_c(void)
         should_continue = false;
 }
 
+void d_c(void)
+{
+        print_board(pike->board);
+}
+
 struct pair { char *string; void (*function)(void); };
+
+#define COMMANDS \
+        X(uci) \
+        X(debug) \
+        X(isready) \
+        X(setoption) \
+        X(register) \
+        X(ucinewgame) \
+        X(position) \
+        X(go) \
+        X(stop) \
+        X(ponderhit) \
+        X(quit) \
+        X(d)
+
+#define X(COMMAND) { #COMMAND, COMMAND ## _c },
+
 static const struct pair functions[] = {
-        { "uci", uci_c },
-        { "debug", debug_c },
-        { "isready", isready_c },
-        { "setoption", setoption_c },
-        { "register", register_c },
-        { "ucinewgame", ucinewgame_c },
-        { "position", position_c },
-        { "go", go_c },
-        { "stop", stop_c },
-        { "ponderhit", ponderhit_c },
-        { "quit", quit_c }
+        COMMANDS
 };
+
+#undef X
 
 void uci(void)
 {
@@ -153,7 +171,7 @@ void uci(void)
         {
                 errorif(fgets(string, sizeof(string), stdin) == NULL, READ_ERROR);
 
-                char *token = strtok(string, DELIM);
+                char *token = strtok_r(string, DELIM, &strtok_ptr);
                 while (token)
                 {
                         for (size_t i = 0; i < ELEMENTS_OF(functions); i++)
@@ -164,7 +182,7 @@ void uci(void)
                                 }
                         }
 
-                        token = strtok(NULL, DELIM);
+                        token = strtok_r(NULL, DELIM, &strtok_ptr);
                 }
 
 end:
