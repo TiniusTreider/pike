@@ -10,7 +10,7 @@ executable = pike
 
 all: $(executable)
 
-debug: CFLAGS = -Wall -Wextra -g -Iinclude -std=c23
+debug: CFLAGS = -static -Wall -Wextra -g -Iinclude -std=c23
 debug: clean $(executable)
 
 $(executable): $(objects)

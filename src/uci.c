@@ -7,6 +7,7 @@
 #include "board.h"
 #include "engine.h"
 #include "print.h"
+#include "debug.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -18,7 +19,7 @@ bool should_continue = true;
 
 // engine to gui
 
-static char *strtok_ptr;
+static char *strtok_ptr = NULL;
 
 #define SEND(MESSAGE) do { printf(MESSAGE "\n"); fflush(stdout); } while (false)
 
@@ -82,10 +83,10 @@ void position_c(void)
 
         if (strcmp(token, "startpos") == 0) {
                 pike->board = init_board(STARTPOS_FEN);
-                strtok_r(NULL, DELIM, &strtok_ptr);
+                token = strtok_r(NULL, DELIM, &strtok_ptr);
         } else if (strcmp(token, "kiwipete") == 0) {
                 pike->board = init_board(KIWIPETE_FEN);
-                strtok_r(NULL, DELIM, &strtok_ptr);
+                token = strtok_r(NULL, DELIM, &strtok_ptr);
         } else if (strcmp(token, "fen") == 0) {
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
                 if (!token)
@@ -93,7 +94,7 @@ void position_c(void)
 
                 pike->board = init_board(token);
 
-                for (int i = 0; i < 6; i++)
+                for (int i = 0; i < 5; i++)
                 {
                         if (!(token = strtok_r(NULL, DELIM, &strtok_ptr)))
                                 return;
@@ -166,10 +167,14 @@ static const struct pair functions[] = {
 
 void uci(void)
 {
+        LOG("parsing uci");
+
         char string[16384];
         while (should_continue)
         {
                 errorif(fgets(string, sizeof(string), stdin) == NULL, READ_ERROR);
+
+                LOG("parsing a line");
 
                 char *token = strtok_r(string, DELIM, &strtok_ptr);
                 while (token)
@@ -186,6 +191,10 @@ void uci(void)
                 }
 
 end:
+
+                LOG("finished parsing line");
         }
+
+        LOG("finished parsing uci");
 }
 

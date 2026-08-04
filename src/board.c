@@ -6,6 +6,7 @@
 #include "tables.h"
 #include "error.h"
 #include "memory.h"
+#include "debug.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -247,16 +248,22 @@ p_board init_board(char *fen)
 
 void set_board(p_board board, char *fen_string)
 {
+        LOG("parsing fen");
+
         char fen[FEN_BUFFER_SIZE];
         const size_t size = strlen(fen_string);
-        if (size + 1 > FEN_BUFFER_SIZE)
+        if (size + 1 > FEN_BUFFER_SIZE) {
+                LOG("fen too big for buffer");
                 return;
+        }
         memcpy(fen, fen_string, size + 1);
 
-        char *strtok_ptr;
+        char *strtok_ptr = NULL;
         char *fen_position = strtok_r(fen, DELIM, &strtok_ptr);
-        if (*fen_position == '\0' || fen_position == NULL)
+        if (fen_position == NULL || *fen_position == '\0') {
+                LOG("no first segment in fen");
                 return;
+        }
 
         memset(board->mailbox, EMPTY, 64 * sizeof(p_piece));
         memset(board->bitboards, 0, 12 * sizeof(p_bitboard));
@@ -294,21 +301,30 @@ void set_board(p_board board, char *fen_string)
                 square++;
         } while (*++fen_position);
 
+        LOG("parsed first fen chunk");
+
         char *fen_stm = strtok_r(NULL, DELIM, &strtok_ptr);
-        if (*fen_stm == '\0' || fen_stm == NULL)
+        if (fen_stm == NULL || *fen_stm == '\0') {
+                LOG("no second segment in fen");
                 return;
+        }
 
         if (*fen_stm == 'w') {
                 board->player = WHITE;
         } else if (*fen_stm == 'b') {
                 board->player = BLACK;
         } else {
+                LOG("unknown color to move in fen");
                 return;
         }
 
+        LOG("parsed second fen chunk");
+
         char *fen_castling_rights = strtok_r(NULL, DELIM, &strtok_ptr);
-        if (*fen_castling_rights == '\0' || fen_castling_rights == NULL)
+        if (fen_castling_rights == NULL || *fen_castling_rights == '\0') {
+                LOG("no third segment in fen");
                 return;
+        }
 
         board->castling_rights = 0;
         do {
@@ -326,13 +342,18 @@ void set_board(p_board board, char *fen_string)
                                 board->castling_rights |= B_LONG_CASTLE; break;
 
                         default:
+                                LOG("unknown castling rights");
                                 return;
                 }
         } while (*++fen_castling_rights);
 
+        LOG("parsed third fen chunk");
+
         char *fen_ep_square = strtok_r(NULL, DELIM, &strtok_ptr);
-        if (*fen_ep_square == '\0' || fen_ep_square == NULL)
+        if (fen_ep_square == NULL || *fen_ep_square == '\0') {
+                LOG("no fourth segment in fen");
                 return;
+        }
 
         if (*fen_ep_square == '-') {
                 board->ep_square = NO_SQUARE;
@@ -340,11 +361,15 @@ void set_board(p_board board, char *fen_string)
                 const p_index file = fen_ep_square[0];
                 const p_index rank = fen_ep_square[1];
 
-                if (file > 7 || rank > 7)
+                if (file > 7 || rank > 7) {
+                        LOG("unknown ep square in fen");
                         return;
+                }
 
                 board->ep_square = SQUARE_WITH(file, rank);
         }
+
+        LOG("parsed fourth fen chunk\nfinished parsing fen");
 }
 
 void clean_board(p_board board)

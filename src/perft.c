@@ -3,6 +3,7 @@
 #include "perft.h"
 #include "board.h"
 #include "movegen.h"
+#include "print.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -58,6 +59,8 @@ void perft(char *fen, size_t depth)
         } else {
                 board = init_board(fen);
         }
+
+        print_board(board);
 
         for (size_t i = 0; i < depth; i++)
         {
