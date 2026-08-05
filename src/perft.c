@@ -60,8 +60,6 @@ void perft(char *fen, size_t depth)
                 board = init_board(fen);
         }
 
-        print_board(board);
-
         for (size_t i = 0; i < depth; i++)
         {
                 const double before = now();

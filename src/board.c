@@ -261,7 +261,7 @@ void set_board(p_board board, char *fen_string)
         char *strtok_ptr = NULL;
         char *fen_position = strtok_r(fen, DELIM, &strtok_ptr);
         if (fen_position == NULL || *fen_position == '\0') {
-                LOG("no first segment in fen");
+                LOG("no first fen chunk");
                 return;
         }
 
@@ -305,7 +305,7 @@ void set_board(p_board board, char *fen_string)
 
         char *fen_stm = strtok_r(NULL, DELIM, &strtok_ptr);
         if (fen_stm == NULL || *fen_stm == '\0') {
-                LOG("no second segment in fen");
+                LOG("no second fen chunk");
                 return;
         }
 
@@ -322,7 +322,7 @@ void set_board(p_board board, char *fen_string)
 
         char *fen_castling_rights = strtok_r(NULL, DELIM, &strtok_ptr);
         if (fen_castling_rights == NULL || *fen_castling_rights == '\0') {
-                LOG("no third segment in fen");
+                LOG("no third fen chunk");
                 return;
         }
 
@@ -351,7 +351,7 @@ void set_board(p_board board, char *fen_string)
 
         char *fen_ep_square = strtok_r(NULL, DELIM, &strtok_ptr);
         if (fen_ep_square == NULL || *fen_ep_square == '\0') {
-                LOG("no fourth segment in fen");
+                LOG("no fourth fen chunk");
                 return;
         }
 
@@ -369,7 +369,8 @@ void set_board(p_board board, char *fen_string)
                 board->ep_square = SQUARE_WITH(file, rank);
         }
 
-        LOG("parsed fourth fen chunk\nfinished parsing fen");
+        LOG("parsed fourth fen chunk");
+        LOG("finished parsing fen");
 }
 
 void clean_board(p_board board)

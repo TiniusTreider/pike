@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static constexpr char PIECE_CHARS[6] = { 'p', 'b', 'n', 'r', 'k', 'q' };
+static constexpr char PIECE_CHARS[6] = { 'p', 'n', 'b', 'r', 'q', 'k' };
 
 void print_move(p_move move)
 {
@@ -51,20 +51,19 @@ p_move parse_move(p_board board, char *string)
         p_move move;
 
         ASSERT((move.from = parse_square(string)) != NO_SQUARE);
-        ASSERT((move.to = parse_square(string)) != NO_SQUARE);
+        ASSERT((move.to = parse_square(string + 2)) != NO_SQUARE);
 
         if (length == 5)
                 move.promotion = ALGEBRAIC[string[4] - 'b'];
+
+        move.flags = 0;
 
         const p_piece_type piece = PIECE_OF(board->mailbox[move.from]);
         if (piece == PAWN) {
                 if (FILE_OF(move.from) != FILE_OF(move.to) && board->mailbox[move.to] == EMPTY)
                         move.flags = MOVE_EN_PASSANT;
-
                 else if (RANK_OF(move.to) == 0 || RANK_OF(move.to) == 7)
                         move.flags = MOVE_PROMOTION;
-                if (FILE_OF(move.from) != FILE_OF(move.to) && board->mailbox[move.to] == EMPTY)
-                        move.flags = MOVE_EN_PASSANT;
         } else if (piece == KING) {
                 const p_index file = FILE_OF(move.to);
                 if (file - 3 > 2) {
@@ -114,9 +113,8 @@ void print_board(p_board board)
                         printf("\n");
         }
 
-        printf(board->player == WHITE ? "[W]a b c d e f g h" : "[B]h g f e d c b a");
+        printf(board->player == WHITE ? "[W]a b c d e f g h\n" : "[B]h g f e d c b a\n");
 
-        printf("\n\n");
 }
 
 void print_bitboard(p_bitboard board)

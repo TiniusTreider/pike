@@ -89,31 +89,49 @@ void position_c(void)
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         } else if (strcmp(token, "fen") == 0) {
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
-                if (!token)
-                        return;
 
-                pike->board = init_board(token);
+                char fen[128] = "";
 
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 6; i++)
                 {
-                        if (!(token = strtok_r(NULL, DELIM, &strtok_ptr)))
+                        if (i != 0)
+                                strcat(fen, " ");
+                        strcat(fen, token);
+
+                        token = strtok_r(NULL, DELIM, &strtok_ptr);
+                        if (!token)
                                 return;
                 }
+
+                LOG(fen);
+
+                pike->board = init_board(fen);
         }
 
-        if (strcmp(token, "moves") != 0)
+        if (!token || *token == '\0')
                 return;
+
+        LOG("parsing move list");
+
+        if (strcmp(token, "moves") != 0) {
+                LOG("unrecognized argument");
+                return;
+        }
 
         token = strtok_r(NULL, DELIM, &strtok_ptr);
         while (token)
         {
                 const p_move move = parse_move(pike->board, token);
-                if (IS_NULL_MOVE(move))
+                if (IS_NULL_MOVE(move)) {
+                        LOG("invalid move");
                         return;
+                }
                 (void)make_move(pike->board, move);
 
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         }
+
+        LOG("finished parsing move list");
 }
 
 void go_c(void)
