@@ -53,7 +53,16 @@ void uci_c(void)
 
 void debug_c(void)
 {
-        // TODO
+        const char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+
+        lock_mutex(&pike->lock);
+
+        if (strcmp(token, "on") == 0)
+                pike->data.debug = true;
+        else if (strcmp(token, "on") == 0)
+                pike->data.debug = false;
+
+        unlock_mutex(&pike->lock);
 }
 
 void isready_c(void)
@@ -85,10 +94,10 @@ void position_c(void)
         lock_mutex(&pike->lock);
 
         if (strcmp(token, "startpos") == 0) {
-                pike->board = init_board(STARTPOS_FEN);
+                pike->data.board = init_board(STARTPOS_FEN);
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         } else if (strcmp(token, "kiwipete") == 0) {
-                pike->board = init_board(KIWIPETE_FEN);
+                pike->data.board = init_board(KIWIPETE_FEN);
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         } else if (strcmp(token, "fen") == 0) {
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
@@ -108,7 +117,7 @@ void position_c(void)
 
                 LOG(fen);
 
-                pike->board = init_board(fen);
+                pike->data.board = init_board(fen);
         }
 
         if (!token || *token == '\0')
@@ -124,12 +133,12 @@ void position_c(void)
         token = strtok_r(NULL, DELIM, &strtok_ptr);
         while (token)
         {
-                const p_move move = parse_move(pike->board, token);
+                const p_move move = parse_move(pike->data.board, token);
                 if (IS_NULL_MOVE(move)) {
                         LOG("invalid move");
                         goto position_cleanup;
                 }
-                (void)make_move(pike->board, move);
+                (void)make_move(pike->data.board, move);
 
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         }
@@ -165,7 +174,7 @@ void d_c(void)
 {
         lock_mutex(&pike->lock);
 
-        print_board(pike->board);
+        print_board(pike->data.board);
 
         unlock_mutex(&pike->lock);
 }

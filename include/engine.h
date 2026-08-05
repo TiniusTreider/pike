@@ -7,11 +7,16 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+struct engine_data {
+        p_board board;
+        bool debug;
+};
+
 typedef struct engine_struct {
         p_mutex lock;
         p_sem task;
 
-        p_board board;
+        struct engine_data data;
 }* p_engine;
 
 extern p_engine pike;

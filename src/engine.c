@@ -13,7 +13,8 @@ p_engine init_engine(void)
         init_mutex(&engine->lock);
         init_sem(&engine->task);
 
-        engine->board = init_board(STARTPOS_FEN);
+        engine->data.board = init_board(STARTPOS_FEN);
+        engine->data.debug = false;
 
         return engine;
 }
@@ -23,7 +24,7 @@ void clean_engine(p_engine engine)
         clean_mutex(&engine->lock);
         clean_sem(&engine->task);
 
-        clean_board(engine->board);
+        clean_board(engine->data.board);
 
         free(engine);
 }
