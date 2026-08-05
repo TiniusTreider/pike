@@ -113,7 +113,7 @@ void print_board(p_board board)
                         printf("\n");
         }
 
-        printf(board->player == WHITE ? "[W]a b c d e f g h\n" : "[B]h g f e d c b a\n");
+        printf(board->player == WHITE ? "WM a b c d e f g h\n" : "BM h g f e d c b a\n");
 
 }
 
