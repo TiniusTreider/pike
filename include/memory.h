@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 
-void *smalloc(size_t);
-void *scalloc(size_t, size_t);
-void *srealloc(void*, size_t);
+void *smalloc(size_t size);
+void *scalloc(size_t count, size_t size);
+void *srealloc(void *data, size_t size);
 
 #endif
 

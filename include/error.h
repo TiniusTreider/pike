@@ -13,10 +13,10 @@ static constexpr size_t ERROR_MAX_LENGTH = 256;
 #define ERROR_OPEN_DIR "failed to open directory"
 #define ERROR_CLOSE_DIR "failed to close directory"
 
-void error(const char*);
-void errorif(bool, const char*);
-void errorf(const char*, ...);
-void erroriff(bool, const char*, ...);
+void error(const char *message);
+void errorif(bool condition, const char *message);
+void errorf(const char *message, ...);
+void erroriff(bool condition, const char *message, ...);
 
 #endif
 

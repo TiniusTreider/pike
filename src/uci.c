@@ -81,6 +81,8 @@ void position_c(void)
         if (!token)
                 return;
 
+        pthread_mutex_lock(&pike->lock);
+
         if (strcmp(token, "startpos") == 0) {
                 pike->board = init_board(STARTPOS_FEN);
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
@@ -131,6 +133,8 @@ void position_c(void)
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         }
 
+        pthread_mutex_unlock(&pike->lock);
+
         LOG("finished parsing move list");
 }
 
@@ -156,7 +160,11 @@ void quit_c(void)
 
 void d_c(void)
 {
+        pthread_mutex_lock(&pike->lock);
+
         print_board(pike->board);
+
+        pthread_mutex_unlock(&pike->lock);
 }
 
 struct pair { char *string; void (*function)(void); };
@@ -175,7 +183,7 @@ struct pair { char *string; void (*function)(void); };
         X(quit) \
         X(d)
 
-#define X(COMMAND) { #COMMAND, COMMAND ## _c },
+#define X(COMMAND) { #COMMAND, COMMAND##_c },
 
 static const struct pair functions[] = {
         COMMANDS

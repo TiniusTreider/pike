@@ -11,9 +11,9 @@ void error(const char *message)
         exit(EXIT_FAILURE);
 }
 
-void errorif(bool statement, const char *message)
+void errorif(bool condition, const char *message)
 {
-        if (statement)
+        if (condition)
                 error(message);
 }
 
@@ -30,9 +30,9 @@ void errorf(const char *message, ...)
         error(buffer);
 }
 
-void erroriff(bool statement, const char *message, ...)
+void erroriff(bool condition, const char *message, ...)
 {
-        if (statement) {
+        if (condition) {
                 va_list args;
                 va_start(args, message);
 

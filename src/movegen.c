@@ -104,16 +104,16 @@ static inline p_bitboard is_square_attacked(p_board board, p_index square)
                 board->black_pieces; \
  \
         const p_index king_pos = CTZ(board->bitboards[PIECE_WITH(KING, board->player)]); \
-        const p_bitboard LOWER ## s = ( \
+        const p_bitboard LOWER##s = ( \
                 board->bitboards[PIECE_WITH(UPPER, !board->player)] | \
                 board->bitboards[PIECE_WITH(QUEEN, !board->player)] \
         ); \
  \
-        const size_t index = _pext_u64(LOWER ## s, UPPER ## _MOVE_TABLE[king_pos]); \
-        const p_bitboard mask = UPPER ## _PEXT_TABLE[king_pos][index]; \
+        const size_t index = _pext_u64(LOWER##s, UPPER##_MOVE_TABLE[king_pos]); \
+        const p_bitboard mask = UPPER##_PEXT_TABLE[king_pos][index]; \
  \
         p_bitboard pins = 0ULL; \
-        p_bitboard attackers = LOWER ## s & mask; \
+        p_bitboard attackers = LOWER##s & mask; \
  \
         while (attackers) \
         { \
@@ -369,28 +369,28 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
                         const p_index endpos = CTZ(ep_left); \
                         const p_index startpos = board->player ? endpos + 9 : endpos - 7; \
                         const p_bitboard start_mask = BIT_MASK(startpos); \
-                        I(NAME ## _ep_right) H(NAME ## _ep_right) \
+                        I(NAME##_ep_right) H(NAME##_ep_right) \
                         if (start_mask & ep_rook_pin_board) \
-                                goto NAME ## _ep_right; \
+                                goto NAME##_ep_right; \
                         PUSH_EN_PASSANT \
                 } \
  \
-NAME ## _ep_right: \
+NAME##_ep_right: \
  \
                 if (ep_right) \
                 { \
                         const p_index endpos = CTZ(ep_right); \
                         const p_index startpos = board->player ? endpos + 7 : endpos - 9; \
                         const p_bitboard start_mask = BIT_MASK(startpos); \
-                        I(NAME ## _knight) H(NAME ## _knight) \
+                        I(NAME##_knight) H(NAME##_knight) \
                         if (start_mask & ep_rook_pin_board) \
-                                goto NAME ## _knight; \
+                                goto NAME##_knight; \
                         PUSH_EN_PASSANT \
  \
                 } \
         } \
  \
-NAME ## _knight: /* knight */ \
+NAME##_knight: /* knight */ \
  \
         p_bitboard knight_board = board->bitboards[PIECE_WITH(KNIGHT, board->player)]; \
  \

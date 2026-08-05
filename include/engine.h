@@ -4,10 +4,13 @@
 #include "board.h"
 
 #include <pthread.h>
+#include <semaphore.h>
 
 typedef struct engine_struct {
-        p_board board;
         pthread_mutex_t lock;
+        sem_t task;
+
+        p_board board;
 }* p_engine;
 
 extern p_engine pike;
