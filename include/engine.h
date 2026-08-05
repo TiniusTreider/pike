@@ -3,8 +3,11 @@
 
 #include "board.h"
 
+#include <pthread.h>
+
 typedef struct engine_struct {
         p_board board;
+        pthread_mutex_t lock;
 }* p_engine;
 
 extern p_engine pike;
