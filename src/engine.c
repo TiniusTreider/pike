@@ -10,8 +10,8 @@ p_engine init_engine(void)
 {
         p_engine engine = scalloc(1, sizeof(struct engine_struct));
 
-        pthread_mutex_init(&engine->lock, NULL);
-        sem_init(&engine->task, 0, 0);
+        init_mutex(&engine->lock);
+        init_sem(&engine->task);
 
         engine->board = init_board(STARTPOS_FEN);
 
@@ -20,8 +20,8 @@ p_engine init_engine(void)
 
 void clean_engine(p_engine engine)
 {
-        pthread_mutex_destroy(&engine->lock);
-        sem_destroy(&engine->task);
+        clean_mutex(&engine->lock);
+        clean_sem(&engine->task);
 
         clean_board(engine->board);
 

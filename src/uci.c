@@ -8,6 +8,7 @@
 #include "engine.h"
 #include "print.h"
 #include "debug.h"
+#include "wrappers.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -81,7 +82,7 @@ void position_c(void)
         if (!token)
                 return;
 
-        pthread_mutex_lock(&pike->lock);
+        lock_mutex(&pike->lock);
 
         if (strcmp(token, "startpos") == 0) {
                 pike->board = init_board(STARTPOS_FEN);
@@ -102,7 +103,7 @@ void position_c(void)
 
                         token = strtok_r(NULL, DELIM, &strtok_ptr);
                         if (!token)
-                                return;
+                                goto position_cleanup;
                 }
 
                 LOG(fen);
@@ -111,13 +112,13 @@ void position_c(void)
         }
 
         if (!token || *token == '\0')
-                return;
+                goto position_cleanup;
 
         LOG("parsing move list");
 
         if (strcmp(token, "moves") != 0) {
                 LOG("unrecognized argument");
-                return;
+                goto position_cleanup;
         }
 
         token = strtok_r(NULL, DELIM, &strtok_ptr);
@@ -126,16 +127,18 @@ void position_c(void)
                 const p_move move = parse_move(pike->board, token);
                 if (IS_NULL_MOVE(move)) {
                         LOG("invalid move");
-                        return;
+                        goto position_cleanup;
                 }
                 (void)make_move(pike->board, move);
 
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         }
 
-        pthread_mutex_unlock(&pike->lock);
-
         LOG("finished parsing move list");
+
+position_cleanup:
+
+        unlock_mutex(&pike->lock);
 }
 
 void go_c(void)
@@ -160,11 +163,11 @@ void quit_c(void)
 
 void d_c(void)
 {
-        pthread_mutex_lock(&pike->lock);
+        lock_mutex(&pike->lock);
 
         print_board(pike->board);
 
-        pthread_mutex_unlock(&pike->lock);
+        unlock_mutex(&pike->lock);
 }
 
 struct pair { char *string; void (*function)(void); };
@@ -208,13 +211,17 @@ void uci(void)
                         for (size_t i = 0; i < ELEMENTS_OF(functions); i++)
                         {
                                 if (strcmp(token, functions[i].string) == 0) {
+                                        LOG("recognized command");
                                         functions[i].function();
+
                                         goto end;
                                 }
                         }
 
                         token = strtok_r(NULL, DELIM, &strtok_ptr);
                 }
+
+                LOG("did not recognize command");
 
 end:
 

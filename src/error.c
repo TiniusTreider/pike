@@ -7,7 +7,7 @@
 void error(const char *message)
 {
         fflush(stdout);
-        fprintf(stderr, "\033[31m%s\033[0m\n", message);
+        fprintf(stderr, "\nerror: %s\n", message);
         exit(EXIT_FAILURE);
 }
 

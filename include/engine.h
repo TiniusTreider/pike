@@ -2,13 +2,14 @@
 #define ENGINE_H
 
 #include "board.h"
+#include "wrappers.h"
 
 #include <pthread.h>
 #include <semaphore.h>
 
 typedef struct engine_struct {
-        pthread_mutex_t lock;
-        sem_t task;
+        p_mutex lock;
+        p_sem task;
 
         p_board board;
 }* p_engine;

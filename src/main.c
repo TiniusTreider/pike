@@ -2,6 +2,7 @@
 #include "engine.h"
 #include "def.h"
 #include "search.h"
+#include "wrappers.h"
 
 #include <stdio.h>
 
@@ -9,25 +10,30 @@
 
 p_engine pike;
 
+static inline void init_all(p_thread *thread)
+{
+        pike = init_engine();
+        init_thread(thread, search_wait);
+}
+
+static inline void clean_all(p_thread *thread)
+{
+        clean_thread(thread);
+        clean_engine(pike);
+}
+
 int main(int argc, char **argv)
 {
         (void)argv;
-
         if (argc != 1) {
                 printf(USAGE);
                 return 0;
         }
 
-        pike = init_engine();
-
-        pthread_t search_thread;
-        pthread_create(&search_thread, NULL, search_wait, NULL);
-
+        p_thread search_thread;
+        init_all(&search_thread);
         uci();
-
-        pthread_join(search_thread, NULL);
-
-        clean_engine(pike);
+        clean_all(&search_thread);
 
         return 0;
 }

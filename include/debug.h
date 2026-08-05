@@ -5,9 +5,9 @@
 
 #if DEBUG
         #include <stdio.h>
-        #define LOG(MESSAGE) do { fprintf(stderr, "DEBUG: %s\n", MESSAGE); } while (false);
+        #define LOG(MESSAGE) do { fprintf(stderr, "DEBUG: %s\n", MESSAGE); } while (false)
 #else
-        #define LOG(MESSAGE)
+        #define LOG(MESSAGE) ((void)0)
 #endif
 
 #endif
