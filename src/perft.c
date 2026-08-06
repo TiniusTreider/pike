@@ -4,6 +4,7 @@
 #include "board.h"
 #include "movegen.h"
 #include "print.h"
+#include "engine.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -11,10 +12,10 @@
 
 #define BULK_COUNT 1
 
-size_t count(p_board board, size_t depth)
+size_t count(size_t depth)
 {
         p_move buffer[218];
-        const size_t move_count = generate_moves(board, buffer);
+        const size_t move_count = generate_moves(pike->data.board, buffer);
 
         if (depth == 0)
 #if BULK_COUNT
@@ -26,11 +27,11 @@ size_t count(p_board board, size_t depth)
         size_t sum = 0;
         for (size_t i = 0; i < move_count; i++)
         {
-                const p_unmake data = make_move(board, buffer[i]);
+                const p_unmake data = make_move(pike->data.board, buffer[i]);
 
-                sum += count(board, depth - 1);
+                sum += count(depth - 1);
 
-                unmake_move(board, buffer[i], data);
+                unmake_move(pike->data.board, buffer[i], data);
         }
 
         return sum;
@@ -43,41 +44,55 @@ static double now(void)
     return ts.tv_sec + ts.tv_nsec / 1e9;
 }
 
-void perft(char *fen, size_t depth)
+void perft(size_t depth)
 {
-        if (depth == 0) {
-                printf("perft depth cannot be 0\n");
+        if (depth == 0)
                 return;
-        }
 
-        p_board board;
+        p_move buffer[218];
+        const size_t move_count = generate_moves(pike->data.board, buffer);
+        size_t sum = 0;
 
-        if (strcmp(fen, "startpos") == 0) {
-                board = init_board(STARTPOS_FEN);
-        } else if (strcmp(fen, "kiwipete") == 0) {
-                board = init_board(KIWIPETE_FEN);
-        } else {
-                board = init_board(fen);
-        }
+        const double before = now();
 
-        for (size_t i = 0; i < depth; i++)
+        for (size_t i = 0; i < move_count; i++)
         {
-                const double before = now();
+                if (pike->stop)
+                        return;
 
+                const p_unmake data = make_move(pike->data.board, buffer[i]);
+
+                size_t nodes;
+
+                if (depth == 1) {
+                        nodes = 1;
+                } else {
 #if BULK_COUNT
-                const size_t nodes = count(board, i);
+                        nodes = count(depth - 2);
 #else
-                const size_t nodes = count(board, i + 1);
+                        nodes = count(depth - 1);
 #endif
+                }
 
-                const double after = now();
+                unmake_move(pike->data.board, buffer[i], data);
 
-                const double time = after - before;
-                const double mnps = (nodes / 1e6) / time;
+                print_move(buffer[i]);
+                printf(": %zu\n", nodes);
 
-                printf("nodes at depth %zu: %zu (%.3lfMnps, %.6lfs)\n", i + 1, nodes, mnps, time);
+                sum += nodes;
         }
 
-        clean_board(board);
+        const double after = now();
+
+        const double time = after - before;
+        const double nps = sum / time;
+
+        printf(
+                "\n"
+                "Nodes searched: %zu\n"
+                "\n"
+                "info nodes %zu depth %zu time %zu nps %zu\n",
+                sum, sum, depth, (size_t)(time * 1000), (size_t)nps
+        );
 }
 

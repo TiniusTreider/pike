@@ -6,6 +6,7 @@
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdatomic.h>
 
 struct engine_data {
         p_board board;
@@ -25,11 +26,15 @@ struct engine_data {
         bool mate;
         size_t movetime;
         bool infinite;
+        bool perft;
+        size_t perft_depth;
 };
 
 typedef struct engine_struct {
         p_mutex lock;
         p_sem task;
+        atomic_bool stop;
+        atomic_bool kill;
 
         struct engine_data data;
 }* p_engine;

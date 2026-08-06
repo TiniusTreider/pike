@@ -60,7 +60,7 @@ void debug_c(void)
 
         if (strcmp(token, "on") == 0)
                 pike->data.debug = true;
-        else if (strcmp(token, "on") == 0)
+        else if (strcmp(token, "off") == 0)
                 pike->data.debug = false;
 
         unlock_mutex(&pike->lock);
@@ -165,7 +165,8 @@ struct pair { char *string; typeof(void (*)(void)) function; };
         X(nodes) \
         X(mate) \
         X(movetime) \
-        X(infinite)
+        X(infinite) \
+        X(perft)
 
 #define X(COMMAND) void COMMAND##_c(void);
 GO_COMMANDS
@@ -183,6 +184,8 @@ static const struct pair go_functions[] = {
         for (size_t i = 0; i < ELEMENTS_OF(go_functions); i++) \
         { \
                 if (strcmp(token, go_functions[i].string) == 0) { \
+                        LOG("recognized go subcommand"); \
+ \
                         go_functions[i].function(); \
                         break; \
                 } \
@@ -207,14 +210,20 @@ void ponder_c(void)
 {
         pike->data.ponder = true;
 }
+
+#define ADVANCE_TOKEN \
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr); \
+        if (!token) \
+                return;
+
 void wtime_c(void)
 {
-        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        ADVANCE_TOKEN
         pike->data.wtime = strtoull(token, NULL, 10);
 }
 void btime_c(void)
 {
-        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        ADVANCE_TOKEN
         pike->data.btime = strtoull(token, NULL, 10);
 
 }
@@ -225,17 +234,17 @@ void winc_c(void)
 }
 void binc_c(void)
 {
-        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        ADVANCE_TOKEN
         pike->data.binc = strtoull(token, NULL, 10);
 }
 void movestogo_c(void)
 {
-        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        ADVANCE_TOKEN
         pike->data.movestogo = strtoull(token, NULL, 10);
 }
 void depth_c(void)
 {
-        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        ADVANCE_TOKEN
         pike->data.depth = strtoull(token, NULL, 10);
 }
 void nodes_c(void)
@@ -255,6 +264,12 @@ void infinite_c(void)
 {
         pike->data.infinite = true;
 }
+void perft_c(void)
+{
+        ADVANCE_TOKEN
+        pike->data.perft_depth = strtoull(token, NULL, 10);
+        pike->data.perft = true;
+}
 
 void go_c(void)
 {
@@ -272,6 +287,7 @@ void go_c(void)
         pike->data.mate = false;
         pike->data.movetime = 0;
         pike->data.infinite = false;
+        pike->data.perft = false;
 
         char *token = strtok_r(NULL, DELIM, &strtok_ptr);
         while (token)
@@ -282,11 +298,13 @@ void go_c(void)
         }
 
         unlock_mutex(&pike->lock);
+
+        post_sem(&pike->task);
 }
 
 void stop_c(void)
 {
-        // TODO
+        pike->stop = true;
 }
 
 void ponderhit_c(void)
@@ -296,6 +314,9 @@ void ponderhit_c(void)
 
 void quit_c(void)
 {
+        pike->stop = true;
+        pike->kill = true;
+        post_sem(&pike->task);
         should_continue = false;
 }
 

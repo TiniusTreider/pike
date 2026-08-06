@@ -18,6 +18,7 @@ static inline void init_all(p_thread *thread)
 
 static inline void clean_all(p_thread *thread)
 {
+        pike->kill = true;
         clean_thread(thread);
         clean_engine(pike);
 }
