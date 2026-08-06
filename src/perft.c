@@ -12,8 +12,21 @@
 
 #define BULK_COUNT 1
 
+#define STOP_CHECK_FREQ 0xFFFF
+
+static size_t node_count = 0;
+static bool stop_flag = 0;
+
 size_t count(size_t depth)
 {
+        if (stop_flag)
+                return 0;
+
+        if (!(node_count++ & STOP_CHECK_FREQ) && pike->stop) {
+                stop_flag = 1;
+                return 0;
+        }
+
         p_move buffer[218];
         const size_t move_count = generate_moves(pike->data.board, buffer);
 
@@ -32,6 +45,9 @@ size_t count(size_t depth)
                 sum += count(depth - 1);
 
                 unmake_move(pike->data.board, buffer[i], data);
+
+                if (stop_flag)
+                        return 0;
         }
 
         return sum;
@@ -57,9 +73,6 @@ void perft(size_t depth)
 
         for (size_t i = 0; i < move_count; i++)
         {
-                if (pike->stop)
-                        return;
-
                 const p_unmake data = make_move(pike->data.board, buffer[i]);
 
                 size_t nodes;
@@ -72,9 +85,15 @@ void perft(size_t depth)
 #else
                         nodes = count(depth - 1);
 #endif
+                        node_count = 0;
                 }
 
                 unmake_move(pike->data.board, buffer[i], data);
+
+                if (stop_flag) {
+                        stop_flag = 0;
+                        return;
+                }
 
                 print_move(buffer[i]);
                 printf(": %zu\n", nodes);

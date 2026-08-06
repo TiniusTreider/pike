@@ -273,6 +273,8 @@ void perft_c(void)
 
 void go_c(void)
 {
+        pike->stop = false;
+
         lock_mutex(&pike->lock);
 
         pike->data.searchmoves_size = 0;
