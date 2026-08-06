@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 
-#define USAGE VERSION " USAGE:\n        pike    Starts in UCI (Universal Chess Interface) mode\n\n"
+#define USAGE VERSION " USAGE:\n\n    pike    Starts in UCI (Universal Chess Interface) mode\n\n"
 
 p_engine pike;
 

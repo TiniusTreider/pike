@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 bool should_continue = true;
 
@@ -150,9 +151,137 @@ position_cleanup:
         unlock_mutex(&pike->lock);
 }
 
+struct pair { char *string; typeof(void (*)(void)) function; };
+
+#define GO_COMMANDS \
+        X(searchmoves) \
+        X(ponder) \
+        X(wtime) \
+        X(btime) \
+        X(winc) \
+        X(binc) \
+        X(movestogo) \
+        X(depth) \
+        X(nodes) \
+        X(mate) \
+        X(movetime) \
+        X(infinite)
+
+#define X(COMMAND) void COMMAND##_c(void);
+GO_COMMANDS
+#undef X
+
+#define X(COMMAND) { #COMMAND, COMMAND##_c },
+
+static const struct pair go_functions[] = {
+        GO_COMMANDS
+};
+
+#undef X
+
+#define DO_GO_COMMAND do {\
+        for (size_t i = 0; i < ELEMENTS_OF(go_functions); i++) \
+        { \
+                if (strcmp(token, go_functions[i].string) == 0) { \
+                        go_functions[i].function(); \
+                        break; \
+                } \
+        } \
+} while (false)
+
+void searchmoves_c(void)
+{
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        while (token)
+        {
+                const p_move move = parse_move(pike->data.board, token);
+                if (IS_NULL_MOVE(move)) {
+                        DO_GO_COMMAND;
+                }
+                pike->data.searchmoves[pike->data.searchmoves_size++] = move;
+
+                token = strtok_r(NULL, DELIM, &strtok_ptr);
+        }
+}
+void ponder_c(void)
+{
+        pike->data.ponder = true;
+}
+void wtime_c(void)
+{
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        pike->data.wtime = strtoull(token, NULL, 10);
+}
+void btime_c(void)
+{
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        pike->data.btime = strtoull(token, NULL, 10);
+
+}
+void winc_c(void)
+{
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        pike->data.winc = strtoull(token, NULL, 10);
+}
+void binc_c(void)
+{
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        pike->data.binc = strtoull(token, NULL, 10);
+}
+void movestogo_c(void)
+{
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        pike->data.movestogo = strtoull(token, NULL, 10);
+}
+void depth_c(void)
+{
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        pike->data.depth = strtoull(token, NULL, 10);
+}
+void nodes_c(void)
+{
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        pike->data.nodes = strtoull(token, NULL, 10);
+}
+void mate_c(void)
+{
+        pike->data.mate = true;
+}
+void movetime_c(void)
+{
+        strtok_r(NULL, DELIM, &strtok_ptr);
+}
+void infinite_c(void)
+{
+        pike->data.infinite = true;
+}
+
 void go_c(void)
 {
-        // TODO
+        lock_mutex(&pike->lock);
+
+        pike->data.searchmoves_size = 0;
+        pike->data.ponder = false;
+        pike->data.wtime = 0;
+        pike->data.btime = 0;
+        pike->data.winc = 0;
+        pike->data.binc = 0;
+        pike->data.movestogo = 0;
+        pike->data.depth = 0;
+        pike->data.nodes = 0;
+        pike->data.mate = false;
+        pike->data.movetime = 0;
+        pike->data.infinite = false;
+
+        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        while (token)
+        {
+                DO_GO_COMMAND;
+
+                token = strtok_r(NULL, DELIM, &strtok_ptr);
+        }
+
+        unlock_mutex(&pike->lock);
 }
 
 void stop_c(void)
@@ -178,8 +307,6 @@ void d_c(void)
 
         unlock_mutex(&pike->lock);
 }
-
-struct pair { char *string; void (*function)(void); };
 
 #define COMMANDS \
         X(uci) \

@@ -9,7 +9,22 @@
 
 struct engine_data {
         p_board board;
+
         bool debug;
+
+        p_move searchmoves[218];
+        size_t searchmoves_size;
+        bool ponder;
+        size_t wtime;
+        size_t btime;
+        size_t winc;
+        size_t binc;
+        size_t movestogo;
+        size_t depth;
+        size_t nodes;
+        bool mate;
+        size_t movetime;
+        bool infinite;
 };
 
 typedef struct engine_struct {
