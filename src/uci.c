@@ -249,11 +249,12 @@ void depth_c(void)
 }
 void nodes_c(void)
 {
-        char *token = strtok_r(NULL, DELIM, &strtok_ptr);
+        ADVANCE_TOKEN
         pike->data.nodes = strtoull(token, NULL, 10);
 }
 void mate_c(void)
 {
+        ADVANCE_TOKEN
         pike->data.mate = true;
 }
 void movetime_c(void)
