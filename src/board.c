@@ -358,8 +358,8 @@ void set_board(p_board board, char *fen_string)
         if (*fen_ep_square == '-') {
                 board->ep_square = NO_SQUARE;
         } else {
-                const p_index file = fen_ep_square[0];
-                const p_index rank = fen_ep_square[1];
+                const p_index file = fen_ep_square[0] - 'a';
+                const p_index rank = fen_ep_square[1] - '1';
 
                 if (file > 7 || rank > 7) {
                         LOG("unknown ep square in fen");

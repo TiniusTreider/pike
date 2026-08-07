@@ -11,6 +11,7 @@
 
 static inline p_eval negamax(size_t depth)
 {
+        (void)depth;
         return 0;
 }
 

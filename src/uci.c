@@ -92,8 +92,6 @@ void position_c(void)
         if (!token)
                 return;
 
-        LOG(token);
-
         lock_mutex(&pike->lock);
 
         if (strcmp(token, "startpos") == 0) {
