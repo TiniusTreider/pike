@@ -95,8 +95,9 @@ void perft(size_t depth)
                         return;
                 }
 
-                print_move(buffer[i]);
-                printf(": %zu\n", nodes);
+                char move_string[6];
+                print_move(buffer[i], move_string);
+                printf("%s: %zu\n", move_string, nodes);
 
                 sum += nodes;
         }

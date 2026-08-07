@@ -92,13 +92,15 @@ void position_c(void)
         if (!token)
                 return;
 
+        LOG(token);
+
         lock_mutex(&pike->lock);
 
         if (strcmp(token, "startpos") == 0) {
-                pike->data.board = init_board(STARTPOS_FEN);
+                set_board(pike->data.board, STARTPOS_FEN);
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         } else if (strcmp(token, "kiwipete") == 0) {
-                pike->data.board = init_board(KIWIPETE_FEN);
+                set_board(pike->data.board, KIWIPETE_FEN);
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         } else if (strcmp(token, "fen") == 0) {
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
@@ -112,13 +114,15 @@ void position_c(void)
                         strcat(fen, token);
 
                         token = strtok_r(NULL, DELIM, &strtok_ptr);
-                        if (!token)
+                        if (!token && i != 5) {
+                                LOG("incomplete fen");
                                 goto position_cleanup;
+                        }
                 }
 
                 LOG(fen);
 
-                pike->data.board = init_board(fen);
+                set_board(pike->data.board, fen);
         }
 
         if (!token || *token == '\0')
@@ -255,7 +259,7 @@ void nodes_c(void)
 void mate_c(void)
 {
         ADVANCE_TOKEN
-        pike->data.mate = true;
+        pike->data.mate = strtoull(token, NULL, 10);
 }
 void movetime_c(void)
 {
@@ -272,6 +276,8 @@ void perft_c(void)
         pike->data.perft = true;
 }
 
+void stop_c(void);
+
 void go_c(void)
 {
         pike->stop = false;
@@ -287,7 +293,7 @@ void go_c(void)
         pike->data.movestogo = 0;
         pike->data.depth = 0;
         pike->data.nodes = 0;
-        pike->data.mate = false;
+        pike->data.mate = 0;
         pike->data.movetime = 0;
         pike->data.infinite = false;
         pike->data.perft = false;

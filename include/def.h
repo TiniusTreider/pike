@@ -5,6 +5,7 @@
 
 typedef uint8_t p_index;
 typedef uint64_t p_bitboard;
+typedef int16_t p_eval;
 
 static constexpr p_index NO_SQUARE = 64;
 

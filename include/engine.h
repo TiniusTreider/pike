@@ -23,7 +23,7 @@ struct engine_data {
         size_t movestogo;
         size_t depth;
         size_t nodes;
-        bool mate;
+        size_t mate;
         size_t movetime;
         bool infinite;
         bool perft;

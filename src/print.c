@@ -8,9 +8,15 @@
 
 static constexpr char PIECE_CHARS[6] = { 'p', 'n', 'b', 'r', 'q', 'k' };
 
-void print_move(p_move move)
+void print_move(p_move move, char string[6])
 {
-        printf(
+        if (IS_NULL_MOVE(move)) {
+                sprintf(string, "0000");
+                return;
+        }
+
+        sprintf(
+                string,
                 "%c%d%c%d",
                 'a' + FILE_OF(move.from),
                 1 + RANK_OF(move.from),
@@ -20,7 +26,8 @@ void print_move(p_move move)
 
         if (move.flags & MOVE_PROMOTION)
         {
-                printf("%c", PIECE_CHARS[PIECE_OF(move.promotion)]);
+                string[4] = PIECE_CHARS[PIECE_OF(move.promotion)];
+                string[5] = '\0';
         }
 }
 
