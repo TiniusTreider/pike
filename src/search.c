@@ -5,51 +5,204 @@
 #include "debug.h"
 #include "movegen.h"
 #include "print.h"
+#include "memory.h"
+#include "structboard.h"
+#include "macros.h"
+#include "movegen.h"
+#include "def.h"
+#include "eval.h"
 
+#include <string.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <threads.h>
 
-static inline p_eval negamax(size_t depth)
+static size_t nodes_searched = 0;
+#define NODE_LIMIT_FREQ 0xFFFF
+
+#define MATE_SCORE 15000
+#define MATE_THRESHOLD 14000
+
+#define SEARCH_MAX 64
+static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
+
+static inline p_eval negamax(size_t depth, size_t ply)
 {
-        (void)depth;
-        return 0;
+        nodes_searched++;
+
+        if (
+                pike->data.nodes &&
+                nodes_searched & NODE_LIMIT_FREQ &&
+                nodes_searched > pike->data.nodes
+        ) {
+                pike->stop = true;
+                return 0;
+        }
+
+        if (depth == 0)
+                return evaluation(pike->data.board);
+
+        p_move buffer[218];
+        const size_t move_count = generate_moves(pike->data.board, buffer);
+
+        if (move_count == 0) {
+                const p_piece king = PIECE_WITH(KING, pike->data.board->player);
+                const p_index king_pos = CTZ(pike->data.board->bitboards[king]);
+                if (is_square_attacked(
+                                pike->data.board,
+                                king_pos
+                )) {
+                        return -MATE_SCORE;
+                } else {
+                        return 0;
+                }
+        }
+
+        p_eval max_eval = EVAL_MIN;
+        p_move best_move = NULL_MOVE;
+        for (size_t i = 0; i < move_count; i++)
+        {
+                const p_unmake data = make_move(pike->data.board, buffer[i]);
+
+                const p_eval eval = -negamax(depth - 1, ply + 1);
+                if (eval > max_eval) {
+                        max_eval = eval;
+                        best_move = buffer[i];
+                        if (depth != 1)
+                                memcpy(
+                                        pv_matrix[ply] + ply + 1,
+                                        pv_matrix[ply + 1] + ply + 1,
+                                        (SEARCH_MAX - ply - 1) * sizeof(p_move)
+                                );
+                }
+
+                unmake_move(pike->data.board, buffer[i], data);
+
+                if (pike->stop)
+                        return 0;
+        }
+
+        pv_matrix[ply][ply] = best_move;
+
+        if (abs(max_eval) > MATE_THRESHOLD)
+                return max_eval > 0 ? max_eval - 1 : max_eval + 1;
+
+        return max_eval;
+}
+
+#define NS_IN_S 1000000000
+#define MS_IN_S 1000
+
+void *stop_timer(void *arg)
+{
+        struct timespec ts;
+        ts.tv_sec = (time_t)*(double*)arg;
+        ts.tv_nsec = (time_t)(*(double*)arg * NS_IN_S) % NS_IN_S;
+        thrd_sleep(&ts, NULL);
+
+        pike->stop = true;
+
+        return NULL;
+}
+
+static inline double get_search_time(void)
+{
+        const double time = (double)(
+                pike->data.board->player ? pike->data.btime : pike->data.wtime
+        ) / MS_IN_S;
+        const double inc = (double)(
+                pike->data.board->player ? pike->data.binc : pike->data.winc
+        ) / MS_IN_S;
+
+        const double budget = MIN(0.9 * time, 0.04 * time + 0.9 * inc);
+
+        if (pike->data.movetime)
+                return MIN(budget, pike->data.movetime);
+
+        return budget;
 }
 
 static inline void search(void)
 {
+        const bool infinite = pike->data.infinite;
+        double *search_time;
+        p_thread timer;
+        if (!infinite) {
+                search_time = smalloc(sizeof(double));
+                *search_time = get_search_time();
+
+                init_thread(&timer, stop_timer, search_time);
+        }
+
+        p_eval chosen_eval = 0;
         p_move chosen_move = NULL_MOVE;
 
         p_move buffer[218];
         const size_t move_count = generate_moves(pike->data.board, buffer);
-        for (size_t depth = 0; !pike->stop; depth++)
-        {
-                p_eval max_eval;
+
+        for (
+                size_t depth = 1;
+                !pike->stop && (!pike->data.depth || (depth <= pike->data.depth));
+                depth++
+        ) {
+                nodes_searched = 0;
+
+                p_eval max_eval = EVAL_MIN;
                 p_move best_move = NULL_MOVE;
                 for (size_t move = 0; move < move_count; move++)
                 {
                         const p_unmake data = make_move(pike->data.board, buffer[move]);
 
-                        const p_eval eval = negamax(depth);
-                        if (eval > max_eval) {
+                        const p_eval eval = -negamax(depth - 1, 1);
+                        if (eval > max_eval && !pike->stop) {
                                 max_eval = eval;
                                 best_move = buffer[move];
+                                memcpy(
+                                        pv_matrix[0] + 1,
+                                        pv_matrix[1] + 1,
+                                        (SEARCH_MAX - 1) * sizeof(p_move)
+                                );
                         }
 
                         unmake_move(pike->data.board, buffer[move], data);
+
+                        if (pike->stop)
+                                break;
                 }
 
-                if (!pike->stop)
-                        chosen_move = best_move;
+                if (pike->stop)
+                        break;
+
+                chosen_eval = max_eval;
+                chosen_move = best_move;
+                pv_matrix[0][0] = best_move;
+
+                char pv_string[SEARCH_MAX * 6] = "";
+                char pv_move[6];
+                for (size_t i = 0; i < depth; i++)
+                {
+                        print_move(pv_matrix[0][i], pv_move);
+                        strcat(pv_string, pv_move);
+                        if (i != depth - 1)
+                                strcat(pv_string, " ");
+                }
+                printf(
+                        "info depth %zu score cp %d nodes %zu pv %s\n",
+                        depth, chosen_eval, nodes_searched, pv_string
+                );
+                fflush(stdout);
+        }
+
+        if (!infinite) {
+                clean_thread(&timer);
+                free(search_time);
         }
 
         char move_string[6];
         print_move(chosen_move, move_string);
         printf("bestmove %s\n", move_string);
-}
-
-static inline void search_mate(void)
-{
-        // TODO search for mate in pike->mate
+        fflush(stdout);
 }
 
 static inline void search_parse(void)
@@ -57,10 +210,6 @@ static inline void search_parse(void)
         if (pike->data.perft) {
                 perft(pike->data.perft_depth);
                 return;
-        }
-
-        if (pike->data.mate) {
-                search_mate();
         }
 
         search();

@@ -13,7 +13,7 @@ p_engine pike;
 static inline void init_all(p_thread *thread)
 {
         pike = init_engine();
-        init_thread(thread, search_wait);
+        init_thread(thread, search_wait, NULL);
 }
 
 static inline void clean_all(p_thread *thread)

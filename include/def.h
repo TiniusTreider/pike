@@ -7,6 +7,9 @@ typedef uint8_t p_index;
 typedef uint64_t p_bitboard;
 typedef int16_t p_eval;
 
+#define EVAL_MIN (INT16_MIN + 1)
+#define EVAL_MAX (INT16_MAX - 1)
+
 static constexpr p_index NO_SQUARE = 64;
 
 typedef enum : uint8_t {

@@ -37,7 +37,7 @@ static inline void push_promotions(p_move *buffer, size_t *move_count, p_index f
 #undef X
 }
 
-static inline p_bitboard is_square_attacked(p_board board, p_index square)
+p_bitboard is_square_attacked(p_board board, p_index square)
 {
         // pawn
 

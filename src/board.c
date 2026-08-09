@@ -250,7 +250,7 @@ void set_board(p_board board, char *fen_string)
 {
         LOG("parsing fen");
 
-        char fen[FEN_BUFFER_SIZE];
+        char fen[FEN_BUFFER_SIZE] = "";
         const size_t size = strlen(fen_string);
         if (size + 1 > FEN_BUFFER_SIZE) {
                 LOG("fen too big for buffer");

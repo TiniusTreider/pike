@@ -17,11 +17,11 @@ void print_move(p_move move, char string[6])
 
         sprintf(
                 string,
-                "%c%d%c%d",
+                "%c%c%c%c",
                 'a' + FILE_OF(move.from),
-                1 + RANK_OF(move.from),
+                '1' + RANK_OF(move.from),
                 'a' + FILE_OF(move.to),
-                1 + RANK_OF(move.to)
+                '1' + RANK_OF(move.to)
         );
 
         if (move.flags & MOVE_PROMOTION)

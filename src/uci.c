@@ -153,7 +153,7 @@ position_cleanup:
         unlock_mutex(&pike->lock);
 }
 
-struct pair { char *string; typeof(void (*)(void)) function; };
+struct pair { char *string; void (*function)(void); };
 
 #define GO_COMMANDS \
         X(searchmoves) \
@@ -165,7 +165,6 @@ struct pair { char *string; typeof(void (*)(void)) function; };
         X(movestogo) \
         X(depth) \
         X(nodes) \
-        X(mate) \
         X(movetime) \
         X(infinite) \
         X(perft)
@@ -254,14 +253,10 @@ void nodes_c(void)
         ADVANCE_TOKEN
         pike->data.nodes = strtoull(token, NULL, 10);
 }
-void mate_c(void)
-{
-        ADVANCE_TOKEN
-        pike->data.mate = strtoull(token, NULL, 10);
-}
 void movetime_c(void)
 {
-        strtok_r(NULL, DELIM, &strtok_ptr);
+        ADVANCE_TOKEN
+        pike->data.movetime = strtoull(token, NULL, 10);
 }
 void infinite_c(void)
 {
@@ -284,14 +279,13 @@ void go_c(void)
 
         pike->data.searchmoves_size = 0;
         pike->data.ponder = false;
-        pike->data.wtime = 0;
-        pike->data.btime = 0;
-        pike->data.winc = 0;
-        pike->data.binc = 0;
+        pike->data.wtime = 600000;
+        pike->data.btime = 600000;
+        pike->data.winc = 600000;
+        pike->data.binc = 600000;
         pike->data.movestogo = 0;
         pike->data.depth = 0;
         pike->data.nodes = 0;
-        pike->data.mate = 0;
         pike->data.movetime = 0;
         pike->data.infinite = false;
         pike->data.perft = false;
@@ -362,7 +356,7 @@ void uci(void)
 {
         LOG("parsing uci");
 
-        char string[16384];
+        char string[16384] = "";
         while (should_continue)
         {
                 errorif(fgets(string, sizeof(string), stdin) == NULL, READ_ERROR);

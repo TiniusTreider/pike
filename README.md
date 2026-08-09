@@ -14,7 +14,6 @@ Run `make` in project root on Unix systems to compile, and `make clean` to remov
 
 Pike has full UCI support and some extra commands for debugging or ease-of-use.
 
-
 `go perft <depth>` runs a perft divide on the current position with the given depth.
 
 `position kiwipete` buildt-in position, good for debugging move generation errors.

@@ -3,8 +3,9 @@
 
 #include <errno.h>
 
-void init_thread(p_thread *thread, typeof(void *(*)(void *_Nullable)) function) {
-        if (pthread_create(thread, NULL, function, NULL))
+void init_thread(p_thread *restrict thread, void *(*function)(void*), void *restrict arg)
+{
+        if (pthread_create(thread, NULL, function, arg))
                 error("failed to initialize thread");
 }
 
