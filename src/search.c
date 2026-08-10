@@ -26,7 +26,7 @@ static size_t nodes_searched = 0;
 #define SEARCH_MAX 64
 static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
 
-static inline p_eval negamax(size_t depth, size_t ply)
+static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length)
 {
         nodes_searched++;
 
@@ -65,14 +65,11 @@ static inline p_eval negamax(size_t depth, size_t ply)
         {
                 const p_unmake data = make_move(pike->data.board, buffer[i]);
 
-                const p_eval eval = -negamax(depth - 1, ply + 1);
+                size_t copy_size = 0;
+                const p_eval eval = -negamax(depth - 1, ply + 1, &copy_size);
                 if (eval > max_eval) {
                         max_eval = eval;
                         best_move = buffer[i];
-
-                        size_t copy_size = depth - 1;
-                        if (abs(max_eval) > MATE_THRESHOLD)
-                                copy_size = abs(max_eval - MATE_SCORE);
 
                         if (copy_size)
                                 memcpy(
@@ -80,6 +77,8 @@ static inline p_eval negamax(size_t depth, size_t ply)
                                         pv_matrix[ply + 1],
                                         copy_size * sizeof(p_move)
                                 );
+
+                        *pv_length = copy_size + 1;
                 }
 
                 unmake_move(pike->data.board, buffer[i], data);
@@ -104,7 +103,7 @@ static inline size_t get_search_time(void)
         const double time = pike->data.board->player ? pike->data.btime : pike->data.wtime;
         const double inc = pike->data.board->player ? pike->data.binc : pike->data.winc;
 
-        const double budget = MIN(0.9 * time, 0.04 * time + 0.9 * inc);
+        const double budget = MIN(0.9 * time, 0.05 * time + 0.8 * inc);
 
         if (pike->data.movetime)
                 return MIN(budget, pike->data.movetime);
@@ -129,20 +128,20 @@ static inline void search(void)
         ) {
                 nodes_searched = 0;
 
+                size_t pv_length = 0;
+
                 p_eval max_eval = EVAL_MIN;
                 p_move best_move = NULL_MOVE;
                 for (size_t move = 0; move < move_count; move++)
                 {
                         const p_unmake data = make_move(pike->data.board, buffer[move]);
 
-                        const p_eval eval = -negamax(depth - 1, 1);
+                        size_t copy_size = 0;
+                        const p_eval eval = -negamax(depth - 1, 1, &copy_size);
+
                         if (eval > max_eval && !pike->stop) {
                                 max_eval = eval;
                                 best_move = buffer[move];
-
-                                size_t copy_size = depth - 1;
-                                if (abs(max_eval) > MATE_THRESHOLD)
-                                        copy_size = abs(max_eval - MATE_SCORE);
 
                                 if (copy_size)
                                         memcpy(
@@ -150,6 +149,8 @@ static inline void search(void)
                                                 pv_matrix[1],
                                                 copy_size * sizeof(p_move)
                                         );
+
+                                pv_length = copy_size + 1;
                         }
 
                         unmake_move(pike->data.board, buffer[move], data);
@@ -167,16 +168,16 @@ static inline void search(void)
 
                 char pv_string[SEARCH_MAX * 6] = "";
                 char pv_move[6];
-                for (size_t i = 0; i < depth; i++)
+                for (size_t i = 0; i < pv_length; i++)
                 {
                         print_move(pv_matrix[0][i], pv_move);
                         strcat(pv_string, pv_move);
-                        if (i != depth - 1)
+                        if (i != pv_length - 1)
                                 strcat(pv_string, " ");
                 }
                 printf(
                         "info depth %zu score cp %d nodes %zu pv %s\n",
-                        depth, chosen_eval, nodes_searched, pv_string
+                        pv_length, chosen_eval, nodes_searched, pv_string
                 );
                 fflush(stdout);
         }
