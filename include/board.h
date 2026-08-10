@@ -21,6 +21,7 @@ typedef struct {
         p_piece captured_piece;
         uint8_t castling_rights;
         p_index ep_square;
+        uint64_t zobrist;
 } p_unmake;
 
 p_unmake make_move(p_board board, p_move move);

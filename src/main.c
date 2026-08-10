@@ -3,6 +3,7 @@
 #include "def.h"
 #include "search.h"
 #include "wrappers.h"
+#include "zobrist.h"
 
 #include <stdio.h>
 
@@ -14,6 +15,7 @@ static inline void init_all(p_thread *thread)
 {
         pike = init_engine();
         init_thread(thread, search_wait, NULL);
+        init_zobrist();
 }
 
 static inline void clean_all(p_thread *thread)

@@ -96,7 +96,7 @@ void perft(size_t depth)
         const size_t after = now_ms();
 
         const size_t time = after - before;
-        const size_t nps = sum / time;
+        const size_t nps = sum / time * 1000;
 
         printf(
                 "\n"

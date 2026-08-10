@@ -1,6 +1,6 @@
 # pike
 
-UCI compatible chess engine written entirely in POSIX C23 with no dependencies.
+UCI compatible chess engine written entirely in POSIX C23 with no dependencies (exept testing system).
 
 ## usage
 

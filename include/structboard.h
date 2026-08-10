@@ -15,6 +15,8 @@ struct board_struct {
 
         uint8_t castling_rights;
         p_index ep_square;
+
+        uint64_t zobrist;
 };
 
 static constexpr uint8_t W_LONG_CASTLE = 0b00000001;
