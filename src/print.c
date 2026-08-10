@@ -50,6 +50,8 @@ static inline p_index parse_square(char *string)
 #undef RETURN
 #define RETURN NULL_MOVE
 
+static constexpr p_index KING_STARTING_SQUARE[2] = { 60, 4 };
+
 p_move parse_move(p_board board, char *string)
 {
         size_t length = strlen(string);
@@ -73,7 +75,7 @@ p_move parse_move(p_board board, char *string)
                         move.flags = MOVE_PROMOTION;
         } else if (piece == KING) {
                 const p_index file = FILE_OF(move.to);
-                if (file - 3 > 2) {
+                if (move.from == KING_STARTING_SQUARE[board->player] && file - 3 > 2) {
                         move.flags = file > 4 ? MOVE_SHORT_CASTLE : MOVE_LONG_CASTLE;
                 }
         }
