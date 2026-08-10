@@ -7,6 +7,7 @@
 #include "error.h"
 #include "memory.h"
 #include "debug.h"
+#include "zobrist.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,9 @@ static inline void make_special_move(
                                 BITBOARD_REMOVE_MASK(board->bitboards[from], mask);
                                 BITBOARD_ADD_MASK(board->bitboards[piece], mask);
                                 board->mailbox[move.to] = piece;
+
+                                board->zobrist ^= piece_hash[move.to][from];
+                                board->zobrist ^= piece_hash[move.to][piece];
                         } break;
                 case MOVE_EN_PASSANT:
                         {
@@ -41,6 +45,8 @@ static inline void make_special_move(
                                 board->mailbox[square] = EMPTY;
                                 BITBOARD_REMOVE_BIT(board->all_pieces, square);
                                 BITBOARD_REMOVE_BIT(*enemy, square);
+
+                                board->zobrist ^= piece_hash[square][pawn];
                         } break;
                 case MOVE_LONG_CASTLE:
                         {
@@ -58,6 +64,9 @@ static inline void make_special_move(
                                 BITBOARD_ADD_BIT(board->all_pieces, rook_end);
                                 BITBOARD_ADD_BIT(*friendly, rook_end);
 
+                                board->zobrist ^= piece_hash[rook_start][rook];
+                                board->zobrist ^= piece_hash[rook_end][rook];
+
                         } break;
                 case MOVE_SHORT_CASTLE:
                         {
@@ -74,6 +83,9 @@ static inline void make_special_move(
                                 board->mailbox[rook_end] = rook;
                                 BITBOARD_ADD_BIT(board->all_pieces, rook_end);
                                 BITBOARD_ADD_BIT(*friendly, rook_end);
+
+                                board->zobrist ^= piece_hash[rook_start][rook];
+                                board->zobrist ^= piece_hash[rook_end][rook];
                         } break;
 
                 default:
@@ -98,7 +110,8 @@ p_unmake make_move(p_board board, p_move move)
         const p_unmake data = (p_unmake){
                 .captured_piece = to,
                 .castling_rights = board->castling_rights,
-                .ep_square = board->ep_square
+                .ep_square = board->ep_square,
+                .zobrist = board->zobrist
         };
 
         // update board state
@@ -107,27 +120,37 @@ p_unmake make_move(p_board board, p_move move)
         board->mailbox[move.from] = EMPTY;
         BITBOARD_REMOVE_BIT(board->all_pieces, move.from);
         BITBOARD_REMOVE_BIT(*friendly, move.from);
+        board->zobrist ^= piece_hash[move.from][from];
 
         BITBOARD_REMOVE_BIT(board->bitboards[to], move.to);
+        BITBOARD_REMOVE_BIT(*enemy, move.to);
+        board->zobrist ^= piece_hash[move.to][to];
+
         BITBOARD_ADD_BIT(board->bitboards[from], move.to);
         board->mailbox[move.to] = from;
         BITBOARD_ADD_BIT(board->all_pieces, move.to);
-        BITBOARD_REMOVE_BIT(*enemy, move.to);
         BITBOARD_ADD_BIT(*friendly, move.to);
+        board->zobrist ^= piece_hash[move.to][from];
 
         if (move.flags)
                 make_special_move(board, move, from, friendly, enemy);
 
         // update auxillary information
 
-        if (PIECE_OF(from) == PAWN && DIFFERENCE(move.to, move.from) == 16)
+        board->zobrist ^= board->ep_square == NO_SQUARE ? 0 : ep_hash[FILE_OF(board->ep_square)];
+        if (PIECE_OF(from) == PAWN && DIFFERENCE(move.to, move.from) == 16) {
                 board->ep_square = move.from + -16 * board->player + 8;
-        else
+                board->zobrist ^= FILE_OF(board->ep_square);
+        } else {
                 board->ep_square = NO_SQUARE;
+        }
 
+        board->zobrist ^= castling_hash[board->castling_rights];
         board->castling_rights &= CASTLING_RIGHTS_TABLE[move.to] & CASTLING_RIGHTS_TABLE[move.from];
+        board->zobrist ^= castling_hash[board->castling_rights];
 
         FLIP_BOOL(board->player);
+        board->zobrist ^= black_hash;
 
         return data;
 }
@@ -203,6 +226,7 @@ void unmake_move(p_board board, p_move move, p_unmake data)
 
         board->castling_rights = data.castling_rights;
         board->ep_square = data.ep_square;
+        board->zobrist = data.zobrist;
 
         // restore board state
 
@@ -219,14 +243,16 @@ void unmake_move(p_board board, p_move move, p_unmake data)
         const p_piece from = board->mailbox[move.to];
         const p_piece to = data.captured_piece;
 
-        BITBOARD_ADD_BIT(board->bitboards[to], move.to);
         BITBOARD_REMOVE_BIT(board->bitboards[from], move.to);
         board->mailbox[move.to] = to;
-        if (to == EMPTY)
-                BITBOARD_REMOVE_BIT(board->all_pieces, move.to);
-        else
-                BITBOARD_ADD_BIT(*enemy, move.to);
         BITBOARD_REMOVE_BIT(*friendly, move.to);
+
+        BITBOARD_ADD_BIT(board->bitboards[to], move.to);
+        if (to == EMPTY) {
+                BITBOARD_REMOVE_BIT(board->all_pieces, move.to);
+        } else {
+                BITBOARD_ADD_BIT(*enemy, move.to);
+        }
 
         BITBOARD_ADD_BIT(board->bitboards[from], move.from);
         board->mailbox[move.from] = from;
