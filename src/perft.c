@@ -1,14 +1,12 @@
-#define _POSIX_C_SOURCE 200809L
-
 #include "perft.h"
 #include "board.h"
 #include "movegen.h"
 #include "print.h"
 #include "engine.h"
+#include "wrappers.h"
 
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 
 #define BULK_COUNT 1
 
@@ -53,13 +51,6 @@ size_t count(size_t depth)
         return sum;
 }
 
-static double now(void)
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts.tv_sec + ts.tv_nsec / 1e9;
-}
-
 void perft(size_t depth)
 {
         if (depth == 0)
@@ -69,7 +60,7 @@ void perft(size_t depth)
         const size_t move_count = generate_moves(pike->data.board, buffer);
         size_t sum = 0;
 
-        const double before = now();
+        const size_t before = now_ms();
 
         for (size_t i = 0; i < move_count; i++)
         {
@@ -102,17 +93,17 @@ void perft(size_t depth)
                 sum += nodes;
         }
 
-        const double after = now();
+        const size_t after = now_ms();
 
-        const double time = after - before;
-        const double nps = sum / time;
+        const size_t time = after - before;
+        const size_t nps = sum / time;
 
         printf(
                 "\n"
                 "Nodes searched: %zu\n"
                 "\n"
                 "info nodes %zu depth %zu time %zu nps %zu\n",
-                sum, sum, depth, (size_t)(time * 1000), (size_t)nps
+                sum, sum, depth, time, nps
         );
 }
 

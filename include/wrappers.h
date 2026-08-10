@@ -21,5 +21,7 @@ void clean_sem(p_sem *sem);
 void post_sem(p_sem *sem);
 void wait_sem(p_sem *sem);
 
+size_t now_ms(void);
+
 #endif
 

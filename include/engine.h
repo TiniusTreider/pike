@@ -27,6 +27,8 @@ struct engine_data {
         bool infinite;
         bool perft;
         size_t perft_depth;
+
+        size_t deadline;
 };
 
 typedef struct engine_struct {

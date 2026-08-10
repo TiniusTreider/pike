@@ -1,7 +1,10 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include "wrappers.h"
 #include "error.h"
 
 #include <errno.h>
+#include <time.h>
 
 void init_thread(p_thread *restrict thread, void *(*function)(void*), void *restrict arg)
 {
@@ -55,5 +58,15 @@ void wait_sem(p_sem *sem) {
                 if (errno != EINTR)
                         error("failed to perform semaphore wait");
         }
+}
+
+#define MS_IN_S 1000
+#define NS_IN_MS 1000000
+
+size_t now_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * MS_IN_S + ts.tv_nsec / NS_IN_MS;
 }
 

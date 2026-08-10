@@ -5,7 +5,7 @@ fastchess \
     -engine name=Fruit proto=uci cmd=tests/fruit_21 \
     -openings file=books/8mvs_+90_+99.epd format=epd order=sequential \
     -games 100 \
-    -concurrency 8 \
+    -concurrency 1 \
     -each tc=10+0.5 \
     -each proto=uci
 
