@@ -95,8 +95,20 @@ static inline void make_special_move(
 
 p_unmake make_move(p_board board, p_move move)
 {
+        // update board state
+
         const p_piece from = board->mailbox[move.from];
         const p_piece to = board->mailbox[move.to];
+
+        board->mailbox[move.to] = from;
+        board->mailbox[move.from] = EMPTY;
+
+        BITBOARD_REMOVE_BIT(board->bitboards[from], move.from);
+        BITBOARD_ADD_BIT(board->bitboards[from], move.to);
+        BITBOARD_REMOVE_BIT(board->bitboards[to], move.to);
+
+        BITBOARD_REMOVE_BIT(board->all_pieces, move.from);
+        BITBOARD_ADD_BIT(board->all_pieces, move.to);
 
         p_bitboard *friendly = board->player ?
                 &board->black_pieces :
@@ -104,6 +116,14 @@ p_unmake make_move(p_board board, p_move move)
         p_bitboard *enemy = board->player ?
                 &board->white_pieces :
                 &board->black_pieces;
+
+        BITBOARD_REMOVE_BIT(*friendly, move.from);
+        BITBOARD_ADD_BIT(*friendly, move.to);
+
+        BITBOARD_REMOVE_BIT(*enemy, move.to);
+
+        if (move.flags)
+                make_special_move(board, move, from, friendly, enemy);
 
         // save auxillary information
 
@@ -114,30 +134,15 @@ p_unmake make_move(p_board board, p_move move)
                 .zobrist = board->zobrist
         };
 
-        // update board state
-
-        BITBOARD_REMOVE_BIT(board->bitboards[from], move.from);
-        board->mailbox[move.from] = EMPTY;
-        BITBOARD_REMOVE_BIT(board->all_pieces, move.from);
-        BITBOARD_REMOVE_BIT(*friendly, move.from);
-        board->zobrist ^= piece_hash[move.from][from];
-
-        BITBOARD_REMOVE_BIT(board->bitboards[to], move.to);
-        BITBOARD_REMOVE_BIT(*enemy, move.to);
-        board->zobrist ^= piece_hash[move.to][to];
-
-        BITBOARD_ADD_BIT(board->bitboards[from], move.to);
-        board->mailbox[move.to] = from;
-        BITBOARD_ADD_BIT(board->all_pieces, move.to);
-        BITBOARD_ADD_BIT(*friendly, move.to);
-        board->zobrist ^= piece_hash[move.to][from];
-
-        if (move.flags)
-                make_special_move(board, move, from, friendly, enemy);
-
         // update auxillary information
 
+        board->zobrist ^= piece_hash[move.from][from];
+        board->zobrist ^= piece_hash[move.to][to];
+        board->zobrist ^= piece_hash[move.to][from];
         board->zobrist ^= board->ep_square == NO_SQUARE ? 0 : ep_hash[FILE_OF(board->ep_square)];
+        board->zobrist ^= castling_hash[board->castling_rights];
+        board->zobrist ^= black_hash;
+
         if (PIECE_OF(from) == PAWN && DIFFERENCE(move.to, move.from) == 16) {
                 board->ep_square = move.from + -16 * board->player + 8;
                 board->zobrist ^= FILE_OF(board->ep_square);
@@ -145,12 +150,10 @@ p_unmake make_move(p_board board, p_move move)
                 board->ep_square = NO_SQUARE;
         }
 
-        board->zobrist ^= castling_hash[board->castling_rights];
         board->castling_rights &= CASTLING_RIGHTS_TABLE[move.to] & CASTLING_RIGHTS_TABLE[move.from];
         board->zobrist ^= castling_hash[board->castling_rights];
 
         FLIP_BOOL(board->player);
-        board->zobrist ^= black_hash;
 
         return data;
 }
@@ -243,21 +246,22 @@ void unmake_move(p_board board, p_move move, p_unmake data)
         const p_piece from = board->mailbox[move.to];
         const p_piece to = data.captured_piece;
 
-        BITBOARD_REMOVE_BIT(board->bitboards[from], move.to);
+        board->mailbox[move.from] = from;
         board->mailbox[move.to] = to;
-        BITBOARD_REMOVE_BIT(*friendly, move.to);
 
+        BITBOARD_REMOVE_BIT(board->bitboards[from], move.to);
+        BITBOARD_ADD_BIT(board->bitboards[from], move.from);
         BITBOARD_ADD_BIT(board->bitboards[to], move.to);
+
+        BITBOARD_REMOVE_BIT(*friendly, move.to);
+        BITBOARD_ADD_BIT(*friendly, move.from);
+
         if (to == EMPTY) {
                 BITBOARD_REMOVE_BIT(board->all_pieces, move.to);
         } else {
                 BITBOARD_ADD_BIT(*enemy, move.to);
         }
-
-        BITBOARD_ADD_BIT(board->bitboards[from], move.from);
-        board->mailbox[move.from] = from;
         BITBOARD_ADD_BIT(board->all_pieces, move.from);
-        BITBOARD_ADD_BIT(*friendly, move.from);
 }
 
 p_board init_board(char *fen)
