@@ -33,8 +33,9 @@ static inline void make_special_move(
                                 BITBOARD_ADD_MASK(board->bitboards[piece], mask);
                                 board->mailbox[move.to] = piece;
 
-                                board->zobrist ^= piece_hash[move.to][from];
-                                board->zobrist ^= piece_hash[move.to][piece];
+                                board->zobrist ^= (
+                                        piece_hash[move.to][from] ^ piece_hash[move.to][piece]
+                                );
                         } break;
                 case MOVE_EN_PASSANT:
                         {
@@ -64,8 +65,9 @@ static inline void make_special_move(
                                 BITBOARD_ADD_BIT(board->all_pieces, rook_end);
                                 BITBOARD_ADD_BIT(*friendly, rook_end);
 
-                                board->zobrist ^= piece_hash[rook_start][rook];
-                                board->zobrist ^= piece_hash[rook_end][rook];
+                                board->zobrist ^= (
+                                        piece_hash[rook_start][rook] ^ piece_hash[rook_end][rook]
+                                );
 
                         } break;
                 case MOVE_SHORT_CASTLE:
@@ -84,8 +86,9 @@ static inline void make_special_move(
                                 BITBOARD_ADD_BIT(board->all_pieces, rook_end);
                                 BITBOARD_ADD_BIT(*friendly, rook_end);
 
-                                board->zobrist ^= piece_hash[rook_start][rook];
-                                board->zobrist ^= piece_hash[rook_end][rook];
+                                board->zobrist ^= (
+                                        piece_hash[rook_start][rook] ^ piece_hash[rook_end][rook]
+                                );
                         } break;
 
                 default:
@@ -136,12 +139,14 @@ p_unmake make_move(p_board board, p_move move)
 
         // update auxillary information
 
-        board->zobrist ^= piece_hash[move.from][from];
-        board->zobrist ^= piece_hash[move.to][to];
-        board->zobrist ^= piece_hash[move.to][from];
-        board->zobrist ^= board->ep_square == NO_SQUARE ? 0 : ep_hash[FILE_OF(board->ep_square)];
-        board->zobrist ^= castling_hash[board->castling_rights];
-        board->zobrist ^= black_hash;
+        board->zobrist ^= (
+                piece_hash[move.from][from] ^
+                piece_hash[move.to][to] ^
+                piece_hash[move.to][from] ^
+                black_hash ^
+                (board->ep_square == NO_SQUARE ? 0 : ep_hash[FILE_OF(board->ep_square)]) ^
+                castling_hash[board->castling_rights]
+        );
 
         if (PIECE_OF(from) == PAWN && DIFFERENCE(move.to, move.from) == 16) {
                 board->ep_square = move.from + -16 * board->player + 8;
