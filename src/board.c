@@ -122,9 +122,6 @@ p_unmake make_move(p_board board, p_move move)
 
         BITBOARD_REMOVE_BIT(*enemy, move.to);
 
-        if (move.flags)
-                make_special_move(board, move, from, friendly, enemy);
-
         // save auxillary information
 
         const p_unmake data = (p_unmake){
@@ -133,6 +130,9 @@ p_unmake make_move(p_board board, p_move move)
                 .ep_square = board->ep_square,
                 .zobrist = board->zobrist
         };
+
+        if (move.flags)
+                make_special_move(board, move, from, friendly, enemy);
 
         // update auxillary information
 
@@ -145,7 +145,7 @@ p_unmake make_move(p_board board, p_move move)
 
         if (PIECE_OF(from) == PAWN && DIFFERENCE(move.to, move.from) == 16) {
                 board->ep_square = move.from + -16 * board->player + 8;
-                board->zobrist ^= FILE_OF(board->ep_square);
+                board->zobrist ^= ep_hash[FILE_OF(board->ep_square)];
         } else {
                 board->ep_square = NO_SQUARE;
         }
