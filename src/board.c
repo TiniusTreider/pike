@@ -155,6 +155,8 @@ p_unmake make_move(p_board board, p_move move)
 
         FLIP_BOOL(board->player);
 
+        board->history_end = (board->history_end + 1) % 100; // TODO do history start too (irreversibles (pawn moves and captures))
+
         return data;
 }
 
@@ -262,6 +264,8 @@ void unmake_move(p_board board, p_move move, p_unmake data)
                 BITBOARD_ADD_BIT(*enemy, move.to);
         }
         BITBOARD_ADD_BIT(board->all_pieces, move.from);
+
+        board->history_end = (board->history_end + 99) % 100;
 }
 
 p_board init_board(char *fen)
@@ -401,6 +405,17 @@ void set_board(p_board board, char *fen_string)
 
         LOG("parsed fourth fen chunk");
         LOG("finished parsing fen");
+
+        board->zobrist = 0;
+
+        for (size_t i = 0; i < 64; i++)
+        {
+                board->zobrist ^= piece_hash[i][board->mailbox[i]];
+        }
+
+        board->zobrist ^= board->player ? 0 : black_hash;
+        board->zobrist ^= castling_hash[board->castling_rights];
+        board->zobrist ^= board->ep_square == NO_SQUARE ? 0 : ep_hash[FILE_OF(board->ep_square)];
 }
 
 void clean_board(p_board board)

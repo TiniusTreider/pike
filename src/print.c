@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 static constexpr char PIECE_CHARS[6] = { 'p', 'n', 'b', 'r', 'q', 'k' };
 
@@ -104,6 +105,66 @@ static inline void draw_square(p_piece piece, p_color square_color)
         printf("%s\033[0m", piece_strings[PIECE_OF(piece)]);
 }
 
+static constexpr char FEN_CHARS[12] = {
+        'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'
+};
+
+static inline void get_fen(p_board board, char fen[128])
+{
+        fen[0] = '\0';
+
+        size_t empty = 0;
+        for (int i = 0; i < 64; i++)
+        {
+                const size_t j = FILE_OF(i) + 8 * (7 - RANK_OF(i));
+                const p_piece piece = board->mailbox[j];
+                if (piece == EMPTY) {
+                        empty++;
+                } else {
+                        if (empty != 0) {
+                                sprintf(fen + strlen(fen), "%zu", empty);
+                                empty = 0;
+                        }
+
+                        sprintf(fen + strlen(fen), "%c", FEN_CHARS[piece]);
+                }
+
+                if (i % 8 == 7 && i != 63) {
+                        if (empty != 0) {
+                                sprintf(fen + strlen(fen), "%zu", empty);
+                                empty = 0;
+                        }
+
+                        strcat(fen, "/");
+                }
+        }
+
+        strcat(fen, board->player ? " b " : " w ");
+
+        if (board->castling_rights == 0) {
+                strcat(fen, "- ");
+        } else {
+                if (board->castling_rights & W_SHORT_CASTLE)
+                        strcat(fen, "K");
+                if (board->castling_rights & W_LONG_CASTLE)
+                        strcat(fen, "Q");
+                if (board->castling_rights & B_SHORT_CASTLE)
+                        strcat(fen, "k");
+                if (board->castling_rights & B_LONG_CASTLE)
+                        strcat(fen, "q");
+                strcat(fen, " ");
+        }
+
+        if (board->ep_square == NO_SQUARE) {
+                strcat(fen, "- - -");
+        } else {
+                sprintf(
+                        fen, "%c%c - -",
+                        'a' + FILE_OF(board->ep_square), '1' + RANK_OF(board->ep_square)
+                );
+        }
+}
+
 void print_board(p_board board)
 {
         for (int j = 0; j < 64; j++)
@@ -122,8 +183,11 @@ void print_board(p_board board)
                         printf("\n");
         }
 
-        printf(board->player == WHITE ? "WM a b c d e f g h\n" : "BM h g f e d c b a\n");
-
+        printf(board->player == WHITE ? "WM a b c d e f g h\n\n" : "BM h g f e d c b a\n\n");
+        printf("Zobrist: %016" PRIX64 "\n", board->zobrist);
+        char fen[128];
+        get_fen(board, fen);
+        printf("FEN: %s\n", fen);
 }
 
 void print_bitboard(p_bitboard board)
