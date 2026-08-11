@@ -13,9 +13,9 @@ p_engine pike;
 
 static inline void init_all(p_thread *thread)
 {
+        init_zobrist();
         pike = init_engine();
         init_thread(thread, search_wait, NULL);
-        init_zobrist();
 }
 
 static inline void clean_all(p_thread *thread)

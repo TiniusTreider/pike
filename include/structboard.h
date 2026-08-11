@@ -3,6 +3,8 @@
 
 #include "def.h"
 
+#include <stddef.h>
+
 struct board_struct {
         p_color player;
 
@@ -17,6 +19,10 @@ struct board_struct {
         p_index ep_square;
 
         uint64_t zobrist;
+
+        uint64_t history;
+        size_t history_start;
+        size_t history_end;
 };
 
 static constexpr uint8_t W_LONG_CASTLE = 0b00000001;
