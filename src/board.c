@@ -443,9 +443,9 @@ bool is_repeated(p_board board)
 {
         size_t count = 0;
         for (
-                size_t i = board->history_start;
-                i != board->history_end;
-                i = (i + 1 * sizeof(board->history)) % 100
+                size_t i = (board->history_end + 1) % sizeof(board->history);
+                i != board->history_start;
+                i = (i + sizeof(board->history) + 99) % sizeof(board->history)
         ) {
                 if (board->history[i] == board->zobrist) {
                         if (count)
