@@ -6,7 +6,7 @@ fastchess \
     -engine name=pike_old proto=uci cmd=$2 \
     -openings file=books/8mvs_+90_+99.epd format=epd order=random \
     -games 50 \
-    -concurrency 8 \
+    -concurrency 2 \
     -each tc=5+3 \
     -log file=t/log.log \
     -log engine=true
