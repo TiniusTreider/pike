@@ -126,7 +126,8 @@ static inline void search(void)
 
         for (
                 size_t depth = 1;
-                !pike->stop && (!pike->data.depth || (depth <= pike->data.depth));
+                !pike->stop && (!pike->data.depth || (depth <= pike->data.depth))
+                && depth < SEARCH_MAX;
                 depth++
         ) {
                 nodes_searched = 0;

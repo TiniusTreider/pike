@@ -60,7 +60,7 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 3887553554866989250,
+    "seed": 14717022101373251435,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -69,7 +69,7 @@
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 50,
+    "rounds": 500,
     "concurrency": 8,
     "force_concurrency": false,
     "recover": false,
@@ -79,7 +79,7 @@
     "affinity": false,
     "show_latency": false,
     "log": {
-        "file": "tests/log.log",
+        "file": "t/log.log",
         "level": 2,
         "append_file": true,
         "compress": false,
@@ -96,9 +96,9 @@
             "options": [],
             "limit": {
                 "tc": {
-                    "increment": 3000,
+                    "increment": 80,
                     "fixed_time": 0,
-                    "time": 5000,
+                    "time": 133,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -116,9 +116,9 @@
             "options": [],
             "limit": {
                 "tc": {
-                    "increment": 3000,
+                    "increment": 80,
                     "fixed_time": 0,
-                    "time": 5000,
+                    "time": 133,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -130,15 +130,15 @@
     ],
     "stats": {
         "pike_new vs pike_old": {
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
+            "wins": 6,
+            "losses": 26,
+            "draws": 14,
             "penta_WW": 0,
-            "penta_WD": 0,
-            "penta_WL": 0,
-            "penta_DD": 0,
-            "penta_LD": 0,
-            "penta_LL": 0
+            "penta_WD": 4,
+            "penta_WL": 2,
+            "penta_DD": 3,
+            "penta_LD": 4,
+            "penta_LL": 10
         }
     }
 }

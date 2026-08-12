@@ -441,6 +441,9 @@ void clean_board(p_board board)
 
 bool is_repeated(p_board board)
 {
+        if ((board->history_end + 1) % sizeof(board->history) == board->history_start)
+                return true;
+
         size_t count = 0;
         for (
                 size_t i = (board->history_end + 1) % sizeof(board->history);
