@@ -43,6 +43,9 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length)
         if (depth == 0)
                 return evaluation(pike->data.board);
 
+        if (is_repeated(pike->data.board))
+                return 0;
+
         p_move buffer[218];
         const size_t move_count = generate_moves(pike->data.board, buffer);
 

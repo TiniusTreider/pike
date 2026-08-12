@@ -159,7 +159,7 @@ static inline void get_fen(p_board board, char fen[128])
                 strcat(fen, "- - -");
         } else {
                 sprintf(
-                        fen, "%c%c - -",
+                        fen + strlen(fen), "%c%c - -",
                         'a' + FILE_OF(board->ep_square), '1' + RANK_OF(board->ep_square)
                 );
         }
@@ -185,7 +185,7 @@ void print_board(p_board board)
 
         printf(board->player == WHITE ? "WM a b c d e f g h\n\n" : "BM h g f e d c b a\n\n");
         printf("Zobrist: %016" PRIX64 "\n", board->zobrist);
-        char fen[128];
+        char fen[128] = "";
         get_fen(board, fen);
         printf("FEN: %s\n", fen);
 }

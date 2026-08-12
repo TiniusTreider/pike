@@ -127,11 +127,14 @@ p_unmake make_move(p_board board, p_move move)
 
         // save auxillary information
 
+        board->history_end = (board->history_end + 1) % 100;
+
         const p_unmake data = (p_unmake){
                 .captured_piece = to,
                 .castling_rights = board->castling_rights,
                 .ep_square = board->ep_square,
-                .zobrist = board->zobrist
+                .zobrist = board->zobrist,
+                .history = board->history[board->history_end]
         };
 
         if (move.flags)
@@ -160,7 +163,9 @@ p_unmake make_move(p_board board, p_move move)
 
         FLIP_BOOL(board->player);
 
-        board->history_end = (board->history_end + 1) % 100; // TODO do history start too (irreversibles (pawn moves and captures))
+        board->history[board->history_end] = board->zobrist;
+        if (PIECE_OF(from) == PAWN || to != EMPTY)
+                board->history_start = board->history_end;
 
         return data;
 }
@@ -232,11 +237,15 @@ void unmake_move(p_board board, p_move move, p_unmake data)
 {
         // restore auxillary information
 
+        board->history_end = (board->history_end + 99) % 100;
+
         FLIP_BOOL(board->player);
 
         board->castling_rights = data.castling_rights;
         board->ep_square = data.ep_square;
         board->zobrist = data.zobrist;
+        board->history_start = data.history_start;
+        board->history[board->history_end] = data.history;
 
         // restore board state
 
@@ -269,8 +278,6 @@ void unmake_move(p_board board, p_move move, p_unmake data)
                 BITBOARD_ADD_BIT(*enemy, move.to);
         }
         BITBOARD_ADD_BIT(board->all_pieces, move.from);
-
-        board->history_end = (board->history_end + 99) % 100;
 }
 
 p_board init_board(char *fen)
@@ -421,10 +428,33 @@ void set_board(p_board board, char *fen_string)
         board->zobrist ^= board->player ? 0 : black_hash;
         board->zobrist ^= castling_hash[board->castling_rights];
         board->zobrist ^= board->ep_square == NO_SQUARE ? 0 : ep_hash[FILE_OF(board->ep_square)];
+
+        board->history_start = 0;
+        board->history_end = 0;
+        board->history[0] = board->zobrist;
 }
 
 void clean_board(p_board board)
 {
         free(board);
+}
+
+bool is_repeated(p_board board)
+{
+        size_t count = 0;
+        for (
+                size_t i = board->history_start;
+                i != board->history_end;
+                i = (i + 1 * sizeof(board->history)) % 100
+        ) {
+                if (board->history[i] == board->zobrist) {
+                        if (count)
+                                return true;
+
+                        count++;
+                }
+        }
+
+        return false;
 }
 

@@ -1,6 +1,8 @@
 #ifndef BOARD_H
 #define BOARD_H
 
+// TODO history start in unmake
+
 #include "def.h"
 
 typedef struct board_struct* p_board;
@@ -22,6 +24,8 @@ typedef struct {
         uint8_t castling_rights;
         p_index ep_square;
         uint64_t zobrist;
+        uint8_t history_start;
+        uint64_t history;
 } p_unmake;
 
 p_unmake make_move(p_board board, p_move move);
@@ -30,6 +34,8 @@ void unmake_move(p_board board, p_move move, p_unmake data);
 p_board init_board(char *fen);
 void set_board(p_board board, char *fen);
 void clean_board(p_board board);
+
+bool is_repeated(p_board board);
 
 #endif
 
