@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-> tests/log.log
+> t/log.log
 fastchess \
     -engine name=pike_new proto=uci cmd=$1 \
     -engine name=pike_old proto=uci cmd=$2 \
@@ -8,6 +8,6 @@ fastchess \
     -games 50 \
     -concurrency 8 \
     -each tc=5+3 \
-    -log file=tests/log.log \
+    -log file=t/log.log \
     -log engine=true
 
