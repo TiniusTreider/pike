@@ -441,14 +441,14 @@ void clean_board(p_board board)
 
 bool is_repeated(p_board board)
 {
-        if ((board->history_end + 1) % sizeof(board->history) == board->history_start)
+        if ((board->history_end + 1) % 100 == board->history_start)
                 return true;
 
         size_t count = 0;
         for (
-                size_t i = (board->history_end + 1) % sizeof(board->history);
+                size_t i = (board->history_end + 1) % 100;
                 i != board->history_start;
-                i = (i + sizeof(board->history) + 99) % sizeof(board->history)
+                i = (i + 100 + 99) % 100
         ) {
                 if (board->history[i] == board->zobrist) {
                         if (count)
