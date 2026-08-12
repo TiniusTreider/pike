@@ -60,7 +60,7 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 17015499516130859906,
+    "seed": 18025809160794488276,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -130,15 +130,15 @@
     ],
     "stats": {
         "pike_new vs pike_old": {
-            "wins": 4,
-            "losses": 4,
-            "draws": 2,
+            "wins": 0,
+            "losses": 8,
+            "draws": 0,
             "penta_WW": 0,
             "penta_WD": 0,
-            "penta_WL": 4,
-            "penta_DD": 1,
+            "penta_WL": 0,
+            "penta_DD": 0,
             "penta_LD": 0,
-            "penta_LL": 0
+            "penta_LL": 4
         }
     }
 }
