@@ -6,9 +6,9 @@ fastchess \
     -engine name=$1 proto=uci cmd=$1 \
     -engine name=$2 proto=uci cmd=$2 \
     -openings file=books/UHO_Lichess_4852_v1.epd format=epd order=random \
-    -games 1 \
-    -concurrency 1 \
-    -each tc=5:0+3 \
+    -games 500 \
+    -concurrency 8 \
+    -each tc=8+0.08 \
     #-pgnout file=t/games.pgn \
     #-log file=t/log.log \
     #-log engine=true
