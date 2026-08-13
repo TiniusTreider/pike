@@ -33,6 +33,42 @@ static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
 #define TT_ELEMENTS TT_SIZE_B / sizeof(p_tt_entry)
 static p_tt_entry tt[TT_ELEMENTS] = {0};
 
+#define EVAL_LOOP(VAR) \
+        for (size_t i = 0; i < VAR; i++) \
+        { \
+                const p_unmake data = make_move(pike->data.board, buffer[i]); \
+ \
+                size_t copy_size = 0; \
+                const p_eval eval = -negamax(depth - 1, ply + 1, &copy_size, -beta, -alpha); \
+ \
+                unmake_move(pike->data.board, buffer[i], data); \
+ \
+                if (pike->stop) \
+                        return 0; \
+ \
+                if (eval > max_eval) { \
+                        max_eval = eval; \
+                        best_move = buffer[i]; \
+ \
+                        if (copy_size) \
+                                memcpy( \
+                                        pv_matrix[ply] + 1, \
+                                        pv_matrix[ply + 1], \
+                                        copy_size * sizeof(p_move) \
+                                ); \
+ \
+                        *pv_length = copy_size + 1; \
+ \
+                        alpha = max_eval; \
+                } \
+ \
+                if (alpha > beta) { \
+                        pruned = true; \
+                        *pv_length = 0; \
+                        break; \
+                } \
+        }
+
 static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval alpha, p_eval beta)
 {
         nodes_searched++;
@@ -62,26 +98,32 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                         } else {
                                 alpha = entry->eval;
                         }
-                }
+                } // TODO tt move
 
                 tt_hit = true;
         }
 
         p_move buffer[218];
-        const size_t move_count = generate_moves(pike->data.board, buffer);
+        const size_t capture_count = generate_capture_moves(pike->data.board, buffer);
 
-        if (tt_hit) {
-                for (size_t i = 0; i < move_count; i++)
-                {
-                        if (moves_are_equal(buffer[i], entry->best)) {
-                                const p_move temp = buffer[0];
-                                buffer[0] = buffer[i];
-                                buffer[i] = temp;
-                        }
-                }
+        p_eval max_eval = EVAL_MIN;
+        p_move best_move = NULL_MOVE;
+
+        bool pruned = false;
+
+        EVAL_LOOP(capture_count)
+
+        size_t quiet_count = 0;
+        if (!pruned) {
+                quiet_count = generate_quiet_moves(
+                        pike->data.board, buffer + capture_count
+                );
+
+                EVAL_LOOP(quiet_count)
         }
 
-        if (move_count == 0) {
+
+        if (capture_count + quiet_count == 0) {
                 const p_piece king = PIECE_WITH(KING, pike->data.board->player);
                 const p_index king_pos = CTZ(pike->data.board->bitboards[king]);
                 if (is_square_attacked(
@@ -91,42 +133,6 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                         return -MATE_SCORE;
                 } else {
                         return 0;
-                }
-        }
-
-        p_eval max_eval = EVAL_MIN;
-        p_move best_move = NULL_MOVE;
-        for (size_t i = 0; i < move_count; i++)
-        {
-                const p_unmake data = make_move(pike->data.board, buffer[i]);
-
-                size_t copy_size = 0;
-                const p_eval eval = -negamax(depth - 1, ply + 1, &copy_size, -beta, -alpha);
-
-                unmake_move(pike->data.board, buffer[i], data);
-
-                if (pike->stop)
-                        return 0;
-
-                if (eval > max_eval) {
-                        max_eval = eval;
-                        best_move = buffer[i];
-
-                        if (copy_size)
-                                memcpy(
-                                        pv_matrix[ply] + 1,
-                                        pv_matrix[ply + 1],
-                                        copy_size * sizeof(p_move)
-                                );
-
-                        *pv_length = copy_size + 1;
-
-                        alpha = max_eval;
-                }
-
-                if (alpha > beta) {
-                        *pv_length = 0;
-                        break;
                 }
         }
 
@@ -171,7 +177,7 @@ static inline void search(void)
         p_move chosen_move = NULL_MOVE;
 
         p_move buffer[218];
-        const size_t move_count = generate_moves(pike->data.board, buffer);
+        const size_t move_count = 0;//generate_moves(pike->data.board, buffer);
 
         size_t total_nodes = 0;
         size_t max_depth = 0;
