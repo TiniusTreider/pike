@@ -238,8 +238,6 @@ void unmake_move(p_board board, p_move move, p_unmake data)
 {
         // restore auxillary information
 
-        board->history_end = (board->history_end + 99) % 100;
-
         FLIP_BOOL(board->player);
 
         board->castling_rights = data.castling_rights;
@@ -247,6 +245,8 @@ void unmake_move(p_board board, p_move move, p_unmake data)
         board->zobrist = data.zobrist;
         board->history_start = data.history_start;
         board->history[board->history_end] = data.history;
+
+        board->history_end = (board->history_end + 99) % 100;
 
         // restore board state
 
