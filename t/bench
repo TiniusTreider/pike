@@ -9,7 +9,7 @@ fastchess \
     -games 1 \
     -concurrency 1 \
     -each tc=5:0+3 \
-    -pgnout file=t/games.pgn #\
+    #-pgnout file=t/games.pgn \
     #-log file=t/log.log \
     #-log engine=true
 

@@ -3,5 +3,6 @@ pike
 compile_commands.json
 linecount
 t/log.log
+t/games.pgn
 config.json
 
