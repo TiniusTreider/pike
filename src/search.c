@@ -10,6 +10,7 @@
 #include "movegen.h"
 #include "def.h"
 #include "eval.h"
+#include "tt.h"
 
 #include <string.h>
 #include <stddef.h>
@@ -25,6 +26,11 @@ static size_t nodes_searched = 0;
 
 #define SEARCH_MAX 64
 static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
+
+#define TT_SIZE_MB 16
+#define TT_SIZE_B TT_SIZE_MB * 1024 * 1024
+#define TT_ELEMENTS TT_SIZE_B / sizeof(p_tt_entry)
+static p_tt_entry tt[TT_ELEMENTS] = {0};
 
 static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length)
 {
@@ -45,6 +51,15 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length)
 
         if (is_repeated(pike->data.board))
                 return 0;
+
+        p_tt_entry *entry = tt + (pike->data.board->zobrist % TT_ELEMENTS);
+        bool tt_hit = false;
+        if (entry->hash == pike->data.board->zobrist) {
+                if (entry->depth >= depth)
+                        return entry->eval;
+
+                tt_hit = true;
+        }
 
         p_move buffer[218];
         const size_t move_count = generate_moves(pike->data.board, buffer);
@@ -88,6 +103,14 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length)
 
                 if (pike->stop)
                         return 0;
+        }
+
+        if (tt_hit) {
+                *entry = (p_tt_entry){
+                        .best = best_move,
+                        .eval = max_eval,
+                        .hash = pike->data.board->zobrist
+                };
         }
 
         pv_matrix[ply][0] = best_move;
