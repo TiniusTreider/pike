@@ -32,7 +32,7 @@ static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
 #define TT_ELEMENTS TT_SIZE_B / sizeof(p_tt_entry)
 static p_tt_entry tt[TT_ELEMENTS] = {0};
 
-static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length)
+static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval alpha, p_eval beta)
 {
         nodes_searched++;
 
@@ -84,7 +84,13 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length)
                 const p_unmake data = make_move(pike->data.board, buffer[i]);
 
                 size_t copy_size = 0;
-                const p_eval eval = -negamax(depth - 1, ply + 1, &copy_size);
+                const p_eval eval = -negamax(depth - 1, ply + 1, &copy_size, -beta, -alpha);
+
+                unmake_move(pike->data.board, buffer[i], data);
+
+                if (pike->stop)
+                        return 0;
+
                 if (eval > max_eval) {
                         max_eval = eval;
                         best_move = buffer[i];
@@ -97,12 +103,12 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length)
                                 );
 
                         *pv_length = copy_size + 1;
+
+                        alpha = max_eval;
                 }
 
-                unmake_move(pike->data.board, buffer[i], data);
-
-                if (pike->stop)
-                        return 0;
+                if (alpha > beta)
+                        return max_eval;
         }
 
         if (tt_hit) {
@@ -159,12 +165,20 @@ static inline void search(void)
 
                 p_eval max_eval = EVAL_MIN;
                 p_move best_move = NULL_MOVE;
+
+                p_eval alpha = EVAL_MIN;
+
                 for (size_t move = 0; move < move_count; move++)
                 {
                         const p_unmake data = make_move(pike->data.board, buffer[move]);
 
                         size_t copy_size = 0;
-                        const p_eval eval = -negamax(depth - 1, 1, &copy_size);
+                        const p_eval eval = -negamax(depth - 1, 1, &copy_size, EVAL_MIN, -alpha);
+
+                        unmake_move(pike->data.board, buffer[move], data);
+
+                        if (pike->stop)
+                                break;
 
                         if (eval > max_eval && !pike->stop) {
                                 max_eval = eval;
@@ -178,12 +192,9 @@ static inline void search(void)
                                         );
 
                                 pv_length = copy_size + 1;
+
+                                alpha = max_eval;
                         }
-
-                        unmake_move(pike->data.board, buffer[move], data);
-
-                        if (pike->stop)
-                                break;
                 }
 
                 if (pike->stop)
