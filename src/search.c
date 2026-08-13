@@ -216,7 +216,7 @@ static inline void search(void)
                 }
                 printf(
                         "info depth %zu score cp %d nodes %zu pv %s\n",
-                        pv_length, chosen_eval, nodes_searched, pv_string
+                        depth, chosen_eval, nodes_searched, pv_string
                 );
                 fflush(stdout);
         }
