@@ -2,4 +2,6 @@ build
 pike
 compile_commands.json
 linecount
+t/log.log
+config.json
 
