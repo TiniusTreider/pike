@@ -441,7 +441,7 @@ void set_board(p_board board, char *fen_string)
         board->zobrist ^= board->ep_square == NO_SQUARE ? 0 : ep_hash[FILE_OF(board->ep_square)];
 
         board->history_end = 0;
-        board->history[0] = board->zobrist;
+        memset(board->history, 0, (board->history_start + 1) * sizeof(uint64_t));
 }
 
 void clean_board(p_board board)
