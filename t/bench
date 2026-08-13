@@ -7,7 +7,7 @@ fastchess \
     -openings file=books/8mvs_+90_+99.epd format=epd order=random \
     -games 1000 \
     -concurrency 8 \
-    -each tc=0.13333+0.08 \
-    -log file=t/log.log \
-    -log engine=true
+    -each tc=0.13333+0.08 #\
+    #-log file=t/log.log \
+    #-log engine=true
 
