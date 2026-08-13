@@ -1,5 +1,5 @@
 CC = gcc
-CLINKS = -mbmi2
+CLINKS = -mbmi2 -lm
 CFLAGS = -Wall -Wextra -O3 -Iinclude -march=native -flto -std=c23
 
 sources = $(wildcard src/*.c)

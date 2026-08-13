@@ -12,6 +12,7 @@
 #include "eval.h"
 #include "tt.h"
 
+#include <math.h>
 #include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -55,8 +56,13 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
         p_tt_entry *entry = tt + (pike->data.board->zobrist % TT_ELEMENTS);
         bool tt_hit = false;
         if (entry->hash == pike->data.board->zobrist) {
-                if (entry->depth >= depth)
-                        return entry->eval;
+                if (entry->depth >= depth) {
+                        if (entry->bound == EXACT) {
+                                return entry->eval;
+                        } else {
+                                alpha = entry->eval;
+                        }
+                }
 
                 tt_hit = true;
         }
@@ -120,18 +126,17 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
 
                 if (alpha > beta) {
                         *pv_length = 0;
-                        return max_eval;
+                        break;
                 }
         }
 
-        if (tt_hit) {
-                *entry = (p_tt_entry){
-                        .best = best_move,
-                        .eval = max_eval,
-                        .hash = pike->data.board->zobrist,
-                        .depth = depth
-                };
-        }
+        *entry = (p_tt_entry){
+                .best = best_move,
+                .eval = max_eval,
+                .hash = pike->data.board->zobrist,
+                .depth = depth,
+                .bound = alpha > beta ? LOWER : EXACT
+        };
 
         pv_matrix[ply][0] = best_move;
 
@@ -159,13 +164,17 @@ static inline size_t get_search_time(void)
 
 static inline void search(void)
 {
-        pike->data.deadline = now_ms() + get_search_time();
+        const size_t search_time = get_search_time();
+        pike->data.deadline = now_ms() + search_time;
 
         p_eval chosen_eval = 0;
         p_move chosen_move = NULL_MOVE;
 
         p_move buffer[218];
         const size_t move_count = generate_moves(pike->data.board, buffer);
+
+        size_t total_nodes = 0;
+        size_t max_depth = 0;
 
         for (
                 size_t depth = 1;
@@ -232,7 +241,14 @@ static inline void search(void)
                         depth, chosen_eval, nodes_searched, pv_string
                 );
                 fflush(stdout);
+
+                max_depth = depth;
+                total_nodes += nodes_searched;
         }
+
+        const double bf = pow(nodes_searched, 1.0 / max_depth);
+        const size_t nps = total_nodes / search_time * 1000;
+        printf("info string bf %lf nps %zu\n", bf, nps);
 
         char move_string[6];
         print_move(chosen_move, move_string);
