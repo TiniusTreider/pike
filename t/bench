@@ -4,7 +4,7 @@
 fastchess \
     -engine name=pike_new proto=uci cmd=$1 \
     -engine name=pike_old proto=uci cmd=$2 \
-    -openings file=books/8mvs_+90_+99.epd format=epd order=random \
+    -openings file=books/UHO_Lichess_4852_v1.epd format=epd order=random \
     -games 1000 \
     -concurrency 8 \
     -each tc=8+0.08 #\

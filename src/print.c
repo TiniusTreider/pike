@@ -52,6 +52,8 @@ static inline p_index parse_square(char *string)
 #define RETURN NULL_MOVE
 
 static constexpr p_index KING_STARTING_SQUARE[2] = { 60, 4 };
+static constexpr p_index KING_SHORT_CASTLE_END_SQUARE[2] = { 62, 6 };
+static constexpr p_index KING_LONG_CASTLE_END_SQUARE[2] = { 58, 2 };
 
 p_move parse_move(p_board board, char *string)
 {
@@ -75,9 +77,14 @@ p_move parse_move(p_board board, char *string)
                 else if (RANK_OF(move.to) == 0 || RANK_OF(move.to) == 7)
                         move.flags = MOVE_PROMOTION;
         } else if (piece == KING) {
-                const p_index file = FILE_OF(move.to);
-                if (move.from == KING_STARTING_SQUARE[board->player] && file - 3 > 2) {
-                        move.flags = file > 4 ? MOVE_SHORT_CASTLE : MOVE_LONG_CASTLE;
+                if (
+                        move.from == KING_STARTING_SQUARE[board->player] &&
+                        (
+                                move.to == KING_SHORT_CASTLE_END_SQUARE[board->player] ||
+                                move.to == KING_LONG_CASTLE_END_SQUARE[board->player]
+                        )
+                ) {
+                        move.flags = FILE_OF(move.to) > 4 ? MOVE_SHORT_CASTLE : MOVE_LONG_CASTLE;
                 }
         }
 

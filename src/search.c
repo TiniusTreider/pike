@@ -115,7 +115,8 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                 *entry = (p_tt_entry){
                         .best = best_move,
                         .eval = max_eval,
-                        .hash = pike->data.board->zobrist
+                        .hash = pike->data.board->zobrist,
+                        .depth = depth
                 };
         }
 

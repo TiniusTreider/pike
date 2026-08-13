@@ -22,7 +22,7 @@
         "enabled": false
     },
     "opening": {
-        "file": "books/8mvs_+90_+99.epd",
+        "file": "books/UHO_Lichess_4852_v1.epd",
         "format": 0,
         "order": 0,
         "plies": -1,
@@ -60,7 +60,7 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 11658190917310073949,
+    "seed": 12726986199659145788,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -90,7 +90,7 @@
         {
             "name": "pike_new",
             "dir": "",
-            "cmd": "old_versions/pike-tt",
+            "cmd": "old_versions/pike-ab-no-tt-move",
             "args": "",
             "restart": false,
             "options": [],
@@ -110,7 +110,7 @@
         {
             "name": "pike_old",
             "dir": "",
-            "cmd": "old_versions/pike-fixed-threefold",
+            "cmd": "old_versions/pike-tt",
             "args": "",
             "restart": false,
             "options": [],
@@ -130,15 +130,15 @@
     ],
     "stats": {
         "pike_new vs pike_old": {
-            "wins": 64,
-            "losses": 64,
-            "draws": 44,
-            "penta_WW": 3,
-            "penta_WD": 9,
-            "penta_WL": 49,
-            "penta_DD": 14,
-            "penta_LD": 7,
-            "penta_LL": 4
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "penta_WW": 0,
+            "penta_WD": 0,
+            "penta_WL": 0,
+            "penta_DD": 0,
+            "penta_LD": 0,
+            "penta_LL": 0
         }
     }
 }
