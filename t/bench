@@ -2,8 +2,8 @@
 
 > t/log.log
 fastchess \
-    -engine name=pike_new proto=uci cmd=$1 \
-    -engine name=pike_old proto=uci cmd=$2 \
+    -engine name=$1 proto=uci cmd=$1 \
+    -engine name=$2 proto=uci cmd=$2 \
     -openings file=books/UHO_Lichess_4852_v1.epd format=epd order=random \
     -games 250 \
     -concurrency 8 \
