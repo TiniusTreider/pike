@@ -136,13 +136,14 @@ static inline void get_fen(p_board board, char fen[128])
                         sprintf(fen + strlen(fen), "%c", FEN_CHARS[piece]);
                 }
 
-                if (i % 8 == 7 && i != 63) {
+                if (i % 8 == 7) {
                         if (empty != 0) {
                                 sprintf(fen + strlen(fen), "%zu", empty);
                                 empty = 0;
                         }
 
-                        strcat(fen, "/");
+                        if (i != 63)
+                                strcat(fen, "/");
                 }
         }
 

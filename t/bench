@@ -7,7 +7,7 @@ fastchess \
     -openings file=books/UHO_Lichess_4852_v1.epd format=epd order=random \
     -games 1000 \
     -concurrency 8 \
-    -each tc=8+0.08 #\
+    -each tc=0:8+0.08 #\
     #-log file=t/log.log \
     #-log engine=true
 
