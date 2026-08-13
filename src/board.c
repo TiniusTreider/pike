@@ -134,7 +134,8 @@ p_unmake make_move(p_board board, p_move move)
                 .castling_rights = board->castling_rights,
                 .ep_square = board->ep_square,
                 .zobrist = board->zobrist,
-                .history = board->history[board->history_end]
+                .history = board->history[board->history_end],
+                .history_start = board->history_start
         };
 
         if (move.flags)

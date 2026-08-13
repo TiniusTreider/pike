@@ -60,7 +60,7 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 8953386997628330971,
+    "seed": 9446591692750066,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -90,7 +90,7 @@
         {
             "name": "pike_new",
             "dir": "",
-            "cmd": "old_versions/pike-no-threefold",
+            "cmd": "pike",
             "args": "",
             "restart": false,
             "options": [],
@@ -110,7 +110,7 @@
         {
             "name": "pike_old",
             "dir": "",
-            "cmd": "old_versions/pike-fixed-fixed-parsing",
+            "cmd": "pike",
             "args": "",
             "restart": false,
             "options": [],
@@ -130,15 +130,15 @@
     ],
     "stats": {
         "pike_new vs pike_old": {
-            "wins": 16,
-            "losses": 170,
-            "draws": 32,
-            "penta_WW": 2,
-            "penta_WD": 1,
-            "penta_WL": 11,
-            "penta_DD": 2,
-            "penta_LD": 27,
-            "penta_LL": 66
+            "wins": 5,
+            "losses": 8,
+            "draws": 3,
+            "penta_WW": 0,
+            "penta_WD": 0,
+            "penta_WL": 5,
+            "penta_DD": 1,
+            "penta_LD": 1,
+            "penta_LL": 1
         }
     }
 }
