@@ -143,11 +143,6 @@ void position_c(void)
                 }
                 (void)make_move(pike->data.board, move);
 
-                char string[6] = "";
-                print_move(move, string);
-                printf("move: %s\n", string);
-                print_board(pike->data.board);
-
                 token = strtok_r(NULL, DELIM, &strtok_ptr);
         }
 

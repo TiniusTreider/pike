@@ -51,16 +51,16 @@ static inline p_index parse_square(char *string)
 #undef RETURN
 #define RETURN NULL_MOVE
 
-static constexpr p_index KING_STARTING_SQUARE[2] = { 60, 4 };
-static constexpr p_index KING_SHORT_CASTLE_END_SQUARE[2] = { 62, 6 };
-static constexpr p_index KING_LONG_CASTLE_END_SQUARE[2] = { 58, 2 };
+static constexpr p_index KING_STARTING_SQUARE[2] = { 4, 60 };
+static constexpr p_index KING_SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
+static constexpr p_index KING_LONG_CASTLE_END_SQUARE[2] = { 2, 58 };
 
 p_move parse_move(p_board board, char *string)
 {
         size_t length = strlen(string);
         ASSERT(length == 4 || length == 5);
 
-        p_move move;
+        p_move move = NULL_MOVE;
 
         ASSERT((move.from = parse_square(string)) != NO_SQUARE);
         ASSERT((move.to = parse_square(string + 2)) != NO_SQUARE);
