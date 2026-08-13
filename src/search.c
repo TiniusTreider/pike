@@ -64,6 +64,17 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
         p_move buffer[218];
         const size_t move_count = generate_moves(pike->data.board, buffer);
 
+        if (tt_hit) {
+                for (size_t i = 0; i < move_count; i++)
+                {
+                        if (moves_are_equal(buffer[i], entry->best)) {
+                                const p_move temp = buffer[0];
+                                buffer[0] = buffer[i];
+                                buffer[i] = temp;
+                        }
+                }
+        }
+
         if (move_count == 0) {
                 const p_piece king = PIECE_WITH(KING, pike->data.board->player);
                 const p_index king_pos = CTZ(pike->data.board->bitboards[king]);
@@ -107,8 +118,10 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                         alpha = max_eval;
                 }
 
-                if (alpha > beta)
+                if (alpha > beta) {
+                        *pv_length = 0;
                         return max_eval;
+                }
         }
 
         if (tt_hit) {

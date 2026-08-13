@@ -37,5 +37,7 @@ void clean_board(p_board board);
 
 bool is_repeated(p_board board);
 
+bool moves_are_equal(p_move a, p_move b);
+
 #endif
 

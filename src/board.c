@@ -462,3 +462,8 @@ bool is_repeated(p_board board)
         return false;
 }
 
+bool moves_are_equal(p_move a, p_move b)
+{
+        return a.from == b.from && a.to == b.to && a.promotion == b.promotion;
+}
+
