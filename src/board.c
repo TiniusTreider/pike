@@ -417,6 +417,16 @@ void set_board(p_board board, char *fen_string)
         }
 
         LOG("parsed fourth fen chunk");
+
+        char *fen_halfmove = strtok_r(NULL, DELIM, &strtok_ptr);
+        if (fen_halfmove  == NULL || *fen_halfmove == '\0') {
+                LOG("no fourth fen chunk");
+                return;
+        }
+
+        board->history_start = strtoull(fen_halfmove, NULL, 10);
+
+        LOG("parsed fifth fen chunk");
         LOG("finished parsing fen");
 
         board->zobrist = 0;
@@ -430,7 +440,6 @@ void set_board(p_board board, char *fen_string)
         board->zobrist ^= castling_hash[board->castling_rights];
         board->zobrist ^= board->ep_square == NO_SQUARE ? 0 : ep_hash[FILE_OF(board->ep_square)];
 
-        board->history_start = 0;
         board->history_end = 0;
         board->history[0] = board->zobrist;
 }
