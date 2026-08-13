@@ -98,13 +98,26 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                         } else {
                                 alpha = entry->eval;
                         }
-                } // TODO tt move
+                }
 
                 tt_hit = true;
         }
 
         p_move buffer[218];
         const size_t capture_count = generate_capture_moves(pike->data.board, buffer);
+
+        bool found_tt_move = false;
+        if (tt_hit) {
+                for (size_t i = 0; i < capture_count; i++)
+                {
+                        if (moves_are_equal(buffer[i], entry->best)) {
+                                found_tt_move = true;
+                                const p_move temp = buffer[0];
+                                buffer[0] = buffer[i];
+                                buffer[i] = temp;
+                        }
+                }
+        }
 
         p_eval max_eval = EVAL_MIN;
         p_move best_move = NULL_MOVE;
@@ -119,9 +132,19 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                         pike->data.board, buffer + capture_count
                 );
 
+                if (tt_hit && !found_tt_move) {
+                        for (size_t i = capture_count; i < capture_count + quiet_count; i++)
+                        {
+                                if (moves_are_equal(buffer[i], entry->best)) {
+                                        const p_move temp = buffer[0];
+                                        buffer[0] = buffer[i];
+                                        buffer[i] = temp;
+                                }
+                        }
+                }
+
                 EVAL_LOOP(quiet_count)
         }
-
 
         if (capture_count + quiet_count == 0) {
                 const p_piece king = PIECE_WITH(KING, pike->data.board->player);
@@ -177,7 +200,8 @@ static inline void search(void)
         p_move chosen_move = NULL_MOVE;
 
         p_move buffer[218];
-        const size_t move_count = 0;//generate_moves(pike->data.board, buffer);
+        size_t move_count = generate_capture_moves(pike->data.board, buffer);
+        move_count += generate_quiet_moves(pike->data.board, buffer + move_count);
 
         size_t total_nodes = 0;
         size_t max_depth = 0;

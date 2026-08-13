@@ -424,7 +424,7 @@ NAME##_end:
                 const p_bitboard mask = BIT_MASK(startpos); \
                 if (mask & bishop_pin_board || mask & rook_pin_board) \
                         continue; \
-                p_bitboard move_board = KNIGHT_MOVE_TABLE[startpos] & ~friendly; \
+                p_bitboard move_board = KNIGHT_MOVE_TABLE[startpos] & ~friendly & MASK; \
                 E \
                 while (move_board) \
                 { \
@@ -443,7 +443,7 @@ NAME##_end:
         { \
                 const p_index startpos = pop_bit(&bishop_board); \
                 const size_t index = _pext_u64(board->all_pieces, BISHOP_MOVE_TABLE[startpos]); \
-                p_bitboard move_board = BISHOP_PEXT_TABLE[startpos][index] & ~friendly; \
+                p_bitboard move_board = BISHOP_PEXT_TABLE[startpos][index] & ~friendly & MASK; \
                 E K \
                 while (move_board) \
                 { \
@@ -461,7 +461,7 @@ NAME##_end:
         { \
                 const p_index startpos = pop_bit(&rook_board); \
                 const size_t index = _pext_u64(board->all_pieces, ROOK_MOVE_TABLE[startpos]); \
-                p_bitboard move_board = ROOK_PEXT_TABLE[startpos][index] & ~friendly; \
+                p_bitboard move_board = ROOK_PEXT_TABLE[startpos][index] & ~friendly & MASK; \
                 E L \
                 while (move_board) \
                 { \
@@ -475,22 +475,21 @@ NAME##_end:
  \
         p_bitboard king_board = board->bitboards[PIECE_WITH(KING, board->player)]; \
  \
-        while (king_board) \
+        const p_index startpos = CTZ(king_board); \
+        p_bitboard move_board = KING_MOVE_TABLE[startpos] & ~friendly & MASK; \
+        while (move_board) \
         { \
-                const p_index startpos = pop_bit(&king_board); \
-                p_bitboard move_board = KING_MOVE_TABLE[startpos] & ~friendly; \
-                while (move_board) \
-                { \
-                        const p_index endpos = pop_bit(&move_board); \
-                        if (!is_square_attacked(board, endpos)) { \
-                                PUSH_VANILLA_MOVE \
-                        } \
+                const p_index endpos = pop_bit(&move_board); \
+                if (!is_square_attacked(board, endpos)) { \
+                        PUSH_VANILLA_MOVE \
                 } \
         } \
  \
         F \
-\
+ \
 } while (false)
+
+#define MASK enemy
 
 size_t generate_capture_moves(p_board board, p_move *buffer)
 {
@@ -598,6 +597,9 @@ size_t generate_capture_moves(p_board board, p_move *buffer)
 #define O GEN_PAWN_PUSH
 #define P(NAME)
 
+#undef MASK
+#define MASK ~enemy
+
 size_t generate_quiet_moves(p_board board, p_move *buffer)
 {
         // pins and checks
@@ -618,6 +620,9 @@ size_t generate_quiet_moves(p_board board, p_move *buffer)
         const p_bitboard friendly = board->player ?
                 board->black_pieces :
                 board->white_pieces;
+        const p_bitboard enemy = board->player ?
+                board->white_pieces :
+                board->black_pieces;
         const p_bitboard pawn = board->bitboards[PIECE_WITH(PAWN, board->player)];
 
         size_t move_count = 0;
