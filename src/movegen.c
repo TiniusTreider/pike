@@ -408,12 +408,6 @@ NAME##_end:
 #define P(NAME) GEN_PAWN_CAPTURE(NAME)
 
 #define GEN_MOVES(NAME) do { \
-        /* pawn */ \
- \
-        O \
- \
-        P(NAME) \
- \
         /* knight */ \
  \
         p_bitboard knight_board = board->bitboards[PIECE_WITH(KNIGHT, board->player)]; \
@@ -470,6 +464,12 @@ NAME##_end:
                         PUSH_VANILLA_MOVE \
                 } \
         } \
+ \
+        /* pawn */ \
+ \
+        O \
+ \
+        P(NAME) \
  \
  G /* king */ \
  \

@@ -19,19 +19,70 @@
 #include <stdio.h>
 #include <threads.h>
 
-static size_t nodes_searched = 0;
-#define NODE_LIMIT_FREQ 0xFFFF
-
 #define MATE_SCORE 15000
 #define MATE_THRESHOLD 14000
 
-#define SEARCH_MAX 64
-static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
+static size_t nodes_searched = 0;
+#define NODE_LIMIT_FREQ 0xFFFF
 
 #define TT_SIZE_MB 16
 #define TT_SIZE_B TT_SIZE_MB * 1024 * 1024
 #define TT_ELEMENTS TT_SIZE_B / sizeof(p_tt_entry)
 static p_tt_entry tt[TT_ELEMENTS] = {0};
+
+static inline p_eval quiescence(p_eval alpha, p_eval beta)
+{
+        nodes_searched++;
+
+        if (!(nodes_searched & NODE_LIMIT_FREQ)) {
+                if (pike->data.nodes && nodes_searched > pike->data.nodes) {
+                        pike->stop = true;
+                        return 0;
+                } if (pike->data.deadline && now_ms() > pike->data.deadline) {
+                        pike->stop = true;
+                        return 0;
+                }
+        }
+
+        if (is_repeated(pike->data.board))
+                return 0;
+
+        const p_eval quiet = evaluation(pike->data.board);
+
+        if (quiet > beta)
+                return quiet;
+
+        if (quiet > alpha)
+                alpha = quiet;
+
+        p_move buffer[218];
+        const size_t move_count = generate_capture_moves(pike->data.board, buffer);
+
+        if (move_count == 0)
+                return quiet;
+
+        for (size_t i = 0; i < move_count; i++)
+        {
+                const p_unmake data = make_move(pike->data.board, buffer[i]);
+
+                const p_eval eval = -quiescence(-beta, -alpha);
+
+                unmake_move(pike->data.board, buffer[i], data);
+
+                if (pike->stop)
+                        return 0;
+
+                alpha = MAX(alpha, eval);
+
+                if (alpha >= beta)
+                        break;
+        }
+
+        return alpha;
+}
+
+#define SEARCH_MAX 64
+static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
 
 #define EVAL_LOOP(VAR) \
         for (size_t i = 0; i < VAR; i++) \
@@ -62,16 +113,19 @@ static p_tt_entry tt[TT_ELEMENTS] = {0};
                         alpha = max_eval; \
                 } \
  \
-                if (alpha > beta) { \
+                if (alpha >= beta) { \
                         pruned = true; \
                         *pv_length = 0; \
                         break; \
                 } \
         }
 
+static size_t bf_nodes = 0;
+
 static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval alpha, p_eval beta)
 {
         nodes_searched++;
+        bf_nodes++;
 
         if (!(nodes_searched & NODE_LIMIT_FREQ)) {
                 if (pike->data.nodes && nodes_searched > pike->data.nodes) {
@@ -84,7 +138,7 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
         }
 
         if (depth == 0)
-                return evaluation(pike->data.board);
+                return quiescence(alpha, beta);
 
         if (is_repeated(pike->data.board))
                 return 0;
@@ -115,6 +169,7 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                                 const p_move temp = buffer[0];
                                 buffer[0] = buffer[i];
                                 buffer[i] = temp;
+                                break;
                         }
                 }
         }
@@ -139,6 +194,7 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                                         const p_move temp = buffer[0];
                                         buffer[0] = buffer[i];
                                         buffer[i] = temp;
+                                        break;
                                 }
                         }
                 }
@@ -150,8 +206,8 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                 const p_piece king = PIECE_WITH(KING, pike->data.board->player);
                 const p_index king_pos = CTZ(pike->data.board->bitboards[king]);
                 if (is_square_attacked(
-                                pike->data.board,
-                                king_pos
+                        pike->data.board,
+                        king_pos
                 )) {
                         return -MATE_SCORE;
                 } else {
@@ -164,7 +220,7 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                 .eval = max_eval,
                 .hash = pike->data.board->zobrist,
                 .depth = depth,
-                .bound = alpha > beta ? LOWER : EXACT
+                .bound = pruned ? LOWER : EXACT
         };
 
         pv_matrix[ply][0] = best_move;
@@ -203,7 +259,6 @@ static inline void search(void)
         size_t move_count = generate_capture_moves(pike->data.board, buffer);
         move_count += generate_quiet_moves(pike->data.board, buffer + move_count);
 
-        size_t total_nodes = 0;
         size_t max_depth = 0;
 
         for (
@@ -212,7 +267,7 @@ static inline void search(void)
                 && depth < SEARCH_MAX;
                 depth++
         ) {
-                nodes_searched = 0;
+                bf_nodes = 0;
 
                 size_t pv_length = 0;
 
@@ -273,11 +328,10 @@ static inline void search(void)
                 fflush(stdout);
 
                 max_depth = depth;
-                total_nodes += nodes_searched;
         }
 
-        const double bf = pow(nodes_searched, 1.0 / max_depth);
-        const size_t nps = total_nodes / search_time * 1000;
+        const double bf = pow(bf_nodes, 1.0 / max_depth);
+        const size_t nps = nodes_searched / search_time * 1000;
         printf("info string bf %lf nps %zu\n", bf, nps);
 
         char move_string[6];
