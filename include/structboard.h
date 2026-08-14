@@ -20,7 +20,7 @@ struct board_struct {
 
         uint64_t zobrist;
 
-        uint64_t history[100];
+        uint64_t history[101];
         size_t history_start;
         size_t history_end;
 };

@@ -127,7 +127,7 @@ p_unmake make_move(p_board board, p_move move)
 
         // save auxillary information
 
-        board->history_end = (board->history_end + 1) % 100;
+        board->history_end = (board->history_end + 1) % 101;
 
         const p_unmake data = (p_unmake){
                 .captured_piece = to,
@@ -246,7 +246,7 @@ void unmake_move(p_board board, p_move move, p_unmake data)
         board->history_start = data.history_start;
         board->history[board->history_end] = data.history;
 
-        board->history_end = (board->history_end + 99) % 100;
+        board->history_end = (board->history_end + 100) % 101;
 
         // restore board state
 
@@ -451,14 +451,14 @@ void clean_board(p_board board)
 
 bool is_repeated(p_board board)
 {
-        if ((board->history_end + 1) % 100 == board->history_start)
+        if ((board->history_end + 1) % 101 == board->history_start)
                 return true;
 
         size_t count = 0;
         for (
-                size_t i = (board->history_end + 1) % 100;
+                size_t i = (board->history_end + 1) % 101;
                 i != board->history_start;
-                i = (i + 100 + 99) % 100
+                i = (i + 101 + 100) % 101
         ) {
                 if (board->history[i] == board->zobrist) {
                         if (count)

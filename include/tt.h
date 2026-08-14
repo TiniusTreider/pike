@@ -5,17 +5,17 @@
 
 #include <stddef.h>
 
-typedef enum {
+typedef enum : uint8_t {
         EXACT,
         LOWER
 } p_tt_bound;
 
 typedef struct {
         p_move best;
-        uint8_t depth;
-        p_eval eval;
         uint64_t hash;
+        p_eval eval;
         p_tt_bound bound;
+        uint8_t depth;
 } p_tt_entry;
 
 #endif
