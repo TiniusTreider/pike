@@ -25,9 +25,10 @@ size_t count(size_t depth)
                 return 0;
         }
 
+        const p_pins pins = generate_pins(pike->data.board);
         p_move buffer[218];
-        size_t move_count = generate_capture_moves(pike->data.board, buffer);
-        move_count += generate_quiet_moves(pike->data.board, buffer + move_count);
+        size_t move_count = generate_capture_moves(pike->data.board, buffer, pins);
+        move_count += generate_quiet_moves(pike->data.board, buffer + move_count, pins);
 
         if (depth == 0)
 #if BULK_COUNT
@@ -57,9 +58,10 @@ void perft(size_t depth)
         if (depth == 0)
                 return;
 
+        const p_pins pins = generate_pins(pike->data.board);
         p_move buffer[218];
-        size_t move_count = generate_capture_moves(pike->data.board, buffer);
-        move_count += generate_quiet_moves(pike->data.board, buffer + move_count);
+        size_t move_count = generate_capture_moves(pike->data.board, buffer, pins);
+        move_count += generate_quiet_moves(pike->data.board, buffer + move_count, pins);
         size_t sum = 0;
 
         const size_t before = now_ms();

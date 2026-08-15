@@ -52,8 +52,9 @@ static inline p_eval quiescence(size_t depth, p_eval alpha, p_eval beta)
         if (quiet > alpha)
                 alpha = quiet;
 
+        const p_pins pins = generate_pins(pike->data.board);
         p_move buffer[218];
-        const size_t move_count = generate_capture_moves(pike->data.board, buffer);
+        const size_t move_count = generate_capture_moves(pike->data.board, buffer, pins);
 
         if (move_count == 0)
                 return quiet;
@@ -148,6 +149,8 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
         if (is_draw(pike->data.board))
                 return 0;
 
+        const p_pins pins = generate_pins(pike->data.board);
+
         p_tt_entry *entry = tt + (pike->data.board->zobrist % TT_ELEMENTS);
         bool tt_hit = false;
         p_external_move tt_move;
@@ -160,7 +163,7 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                         }
                 }
 
-                if (is_move_legal_in_position(pike->data.board, entry->best)) {
+                if (is_move_legal_in_position(pike->data.board, entry->best, pins)) {
                         tt_move = entry->best;
                         tt_hit = true;
                 }
@@ -178,7 +181,7 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                 EVAL_MOVE(tt_move.move, "tt");
 
         p_move buffer[218];
-        capture_count = generate_capture_moves(pike->data.board, buffer);
+        capture_count = generate_capture_moves(pike->data.board, buffer, pins);
 
         bool tt_hit_found = false;
 
@@ -192,7 +195,7 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                 EVAL_MOVE(buffer[i], "capture");
         }
 
-        quiet_count = generate_quiet_moves(pike->data.board, buffer + capture_count);
+        quiet_count = generate_quiet_moves(pike->data.board, buffer + capture_count, pins);
 
         for (size_t i = 0; i < quiet_count; i++)
         {
@@ -266,9 +269,10 @@ static inline void search(void)
         p_eval chosen_eval = 0;
         p_move chosen_move = NULL_MOVE;
 
+        const p_pins pins = generate_pins(pike->data.board);
         p_move buffer[218];
-        size_t move_count = generate_capture_moves(pike->data.board, buffer);
-        move_count += generate_quiet_moves(pike->data.board, buffer + move_count);
+        size_t move_count = generate_capture_moves(pike->data.board, buffer, pins);
+        move_count += generate_quiet_moves(pike->data.board, buffer + move_count, pins);
 
         size_t max_depth = 0;
 

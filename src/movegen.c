@@ -150,6 +150,25 @@ static inline p_bitboard rook_pins(p_board board, p_bitboard rays[64], p_bitboar
         GEN_PINS(rook, ROOK);
 }
 
+p_pins generate_pins(p_board board)
+{
+        p_pins pins = (p_pins){0};
+
+        memset(pins.pin_rays, 0, 64 * sizeof(p_bitboard));
+        pins.checkers = 0ULL;
+
+        pins.bishop_pin_board = bishop_pins(board, pins.pin_rays, &pins.checkers);
+        pins.rook_pin_board = rook_pins(board, pins.pin_rays, &pins.checkers);
+        const p_index king_pos = CTZ(board->bitboards[PIECE_WITH(KING, board->player)]);
+        pins.checkers |= is_square_attacked(board, king_pos);
+
+        pins.check_ray = POP(pins.checkers) == 1 ?
+                BETWEEN_TABLE[king_pos][CTZ(pins.checkers)] | pins.checkers :
+                0xFFFFFFFFFFFFFFFFULL;
+
+        return pins;
+}
+
 static constexpr p_index BEHIND[2] = { (p_index)-8, 8 };
 
 static constexpr p_bitboard LONG_CASTLE_MASK[2] = { 0x000000000000000EULL, 0x0E00000000000000ULL };
@@ -163,46 +182,51 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
 #define AD \
         const p_bitboard end_mask = BIT_MASK(endpos);
 #define BD \
-        if (!(end_mask & check_ray)) \
+        if (!(end_mask & pins.check_ray)) \
                 continue;
 #define CD \
         const p_bitboard start_mask = BIT_MASK(startpos); \
-        if (start_mask & bishop_pin_board) \
+        if (start_mask & pins.bishop_pin_board) \
                 continue; \
-        if (start_mask & rook_pin_board && !(end_mask & pin_rays[startpos])) \
+        if (start_mask & pins.rook_pin_board && !(end_mask & pins.pin_rays[startpos])) \
                 continue;
 #define DD \
         const p_bitboard start_mask = BIT_MASK(startpos); \
-        if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos])) \
+        if (start_mask & pins.bishop_pin_board && !(end_mask & pins.pin_rays[startpos])) \
                 continue; \
-        if (start_mask & rook_pin_board) \
+        if (start_mask & pins.rook_pin_board) \
                 continue;
 #define ED \
-        move_board &= check_ray;
+        move_board &= pins.check_ray;
 #define GD \
         king:
 #define HD(LABEL) \
-        if (!((end_mask | ep_pawn_bit) & check_ray)) \
+        if (!((end_mask | ep_pawn_bit) & pins.check_ray)) \
                 goto LABEL;
 #define ID(LABEL) \
         const p_bitboard end_mask = BIT_MASK(endpos); \
-        if (start_mask & bishop_pin_board && !(end_mask & pin_rays[startpos])) \
+        if (start_mask & pins.bishop_pin_board && !(end_mask & pins.pin_rays[startpos])) \
                 goto LABEL;
 #define JD \
         const p_bitboard ep_pawn_bit = BIT_MASK(ep_pawn);
 #define KD \
         const p_bitboard mask = BIT_MASK(startpos); \
-        if (mask & rook_pin_board) \
+        if (mask & pins.rook_pin_board) \
                 continue;
 #define LD \
         const p_bitboard mask = BIT_MASK(startpos); \
-        if (mask & bishop_pin_board) \
+        if (mask & pins.bishop_pin_board) \
                 continue;
 #define MD \
-        if (mask & bishop_pin_board && !(BIT_MASK(endpos) & pin_rays[startpos])) \
+        if (mask & pins.bishop_pin_board && !(BIT_MASK(endpos) & pins.pin_rays[startpos])) \
                 continue;
 #define ND \
-        if (mask & rook_pin_board && !(BIT_MASK(endpos) & pin_rays[startpos])) \
+        if (mask & pins.rook_pin_board && !(BIT_MASK(endpos) & pins.pin_rays[startpos])) \
+                continue;
+
+#define QD \
+        const p_bitboard start_mask = BIT_MASK(startpos); \
+        if (start_mask & pins.bishop_pin_board || start_mask & pins.rook_pin_board) \
                 continue;
 
 #define A AD
@@ -220,6 +244,7 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
 #define M MD
 #define N ND
 #define O
+#define Q QD
 
 #define PUSH_VANILLA_MOVE \
                 buffer[move_count++] = (p_move){ \
@@ -374,7 +399,9 @@ static constexpr p_index SHORT_CASTLE_END_SQUARE[2] = { 6, 62 };
                 p_bitboard ep_checkers = 0ULL; \
  \
                 BITBOARD_REMOVE_BIT(*enemy_ptr, ep_pawn); \
-                const p_bitboard ep_rook_pin_board = rook_pins(board, ep_pin_rays, &ep_checkers); \
+                const p_bitboard ep_rook_pin_board = rook_pins( \
+                        board, ep_pin_rays, &ep_checkers \
+                ); \
                 BITBOARD_ADD_BIT(*enemy_ptr, ep_pawn); \
  \
                 if (ep_left) \
@@ -415,9 +442,7 @@ NAME##_end:
         while (knight_board) \
         { \
                 const p_index startpos = pop_bit(&knight_board); \
-                const p_bitboard mask = BIT_MASK(startpos); \
-                if (mask & bishop_pin_board || mask & rook_pin_board) \
-                        continue; \
+ \
                 p_bitboard move_board = KNIGHT_MOVE_TABLE[startpos] & ~friendly & MASK; \
                 E \
                 while (move_board) \
@@ -493,22 +518,9 @@ NAME##_end:
 
 #define MASK enemy
 
-size_t generate_capture_moves(p_board board, p_move *buffer)
+size_t generate_capture_moves(p_board board, p_move *buffer, p_pins pins)
 {
         // pins and checks
-
-        p_bitboard pin_rays[64];
-        memset(pin_rays, 0, 64 * sizeof(p_bitboard));
-        p_bitboard checkers = 0ULL;
-
-        const p_bitboard bishop_pin_board = bishop_pins(board, pin_rays, &checkers);
-        const p_bitboard rook_pin_board = rook_pins(board, pin_rays, &checkers);
-        const p_index king_pos = CTZ(board->bitboards[PIECE_WITH(KING, board->player)]);
-        checkers |= is_square_attacked(board, king_pos);
-
-        const p_bitboard check_ray = POP(checkers) == 1 ?
-                BETWEEN_TABLE[king_pos][CTZ(checkers)] | checkers :
-                0xFFFFFFFFFFFFFFFFULL;
 
         const p_bitboard friendly = board->player ?
                 board->black_pieces :
@@ -518,16 +530,18 @@ size_t generate_capture_moves(p_board board, p_move *buffer)
                 board->black_pieces;
         const p_bitboard pawn = board->bitboards[PIECE_WITH(PAWN, board->player)];
 
+        // movegen
+
         size_t move_count = 0;
 
-        if (POP(checkers) == 2)
+        if (POP(pins.checkers) == 2)
                 goto king;
 
-        if (checkers) { // check
+        if (pins.checkers) { // check
 
                 GEN_MOVES(check);
 
-        } else if (bishop_pin_board | rook_pin_board) { // pin
+        } else if (pins.bishop_pin_board | pins.rook_pin_board) { // pin
 
 #undef B
 #undef E
@@ -552,6 +566,7 @@ size_t generate_capture_moves(p_board board, p_move *buffer)
 #undef L
 #undef M
 #undef N
+#undef Q
 #define A
 #define C
 #define D
@@ -560,6 +575,7 @@ size_t generate_capture_moves(p_board board, p_move *buffer)
 #define L
 #define M
 #define N
+#define Q
 
                 GEN_MOVES(normal);
 
@@ -583,6 +599,7 @@ size_t generate_capture_moves(p_board board, p_move *buffer)
 #undef N
 #undef O
 #undef P
+#undef Q
 #define A AD
 #define B BD
 #define C CD
@@ -598,26 +615,14 @@ size_t generate_capture_moves(p_board board, p_move *buffer)
 #define N ND
 #define O GEN_PAWN_PUSH
 #define P(NAME)
+#define Q QD
 
 #undef MASK
 #define MASK ~enemy
 
-size_t generate_quiet_moves(p_board board, p_move *buffer)
+size_t generate_quiet_moves(p_board board, p_move *buffer, p_pins pins)
 {
         // pins and checks
-
-        p_bitboard pin_rays[64];
-        memset(pin_rays, 0, 64 * sizeof(p_bitboard));
-        p_bitboard checkers = 0ULL;
-
-        const p_bitboard bishop_pin_board = bishop_pins(board, pin_rays, &checkers);
-        const p_bitboard rook_pin_board = rook_pins(board, pin_rays, &checkers);
-        const p_index king_pos = CTZ(board->bitboards[PIECE_WITH(KING, board->player)]);
-        checkers |= is_square_attacked(board, king_pos);
-
-        const p_bitboard check_ray = POP(checkers) == 1 ?
-                BETWEEN_TABLE[king_pos][CTZ(checkers)] | checkers :
-                0xFFFFFFFFFFFFFFFFULL;
 
         const p_bitboard friendly = board->player ?
                 board->black_pieces :
@@ -627,16 +632,18 @@ size_t generate_quiet_moves(p_board board, p_move *buffer)
                 board->black_pieces;
         const p_bitboard pawn = board->bitboards[PIECE_WITH(PAWN, board->player)];
 
+        // movegen
+
         size_t move_count = 0;
 
-        if (POP(checkers) == 2)
+        if (POP(pins.checkers) == 2)
                 goto king;
 
-        if (checkers) { // check
+        if (pins.checkers) { // check
 
                 GEN_MOVES(check);
 
-        } else if (bishop_pin_board | rook_pin_board) { // pin
+        } else if (pins.bishop_pin_board | pins.rook_pin_board) { // pin
 
 #undef B
 #undef E
@@ -663,6 +670,7 @@ size_t generate_quiet_moves(p_board board, p_move *buffer)
 #undef L
 #undef M
 #undef N
+#undef Q
 #define A
 #define C
 #define D
@@ -671,6 +679,7 @@ size_t generate_quiet_moves(p_board board, p_move *buffer)
 #define L
 #define M
 #define N
+#define Q
 
                 GEN_MOVES(normal);
 
@@ -679,7 +688,7 @@ size_t generate_quiet_moves(p_board board, p_move *buffer)
         return move_count;
 }
 
-bool is_move_legal_in_position(p_board board, p_external_move move)
+bool is_move_legal_in_position(p_board board, p_external_move move, p_pins pins)
 {
         // basic checks
 
@@ -698,31 +707,18 @@ bool is_move_legal_in_position(p_board board, p_external_move move)
 
         // pins and checks
 
-        p_bitboard pin_rays[64];
-        memset(pin_rays, 0, 64 * sizeof(p_bitboard));
-        p_bitboard checkers = 0ULL;
-
-        const p_bitboard bishop_pin_board = bishop_pins(board, pin_rays, &checkers);
-        const p_bitboard rook_pin_board = rook_pins(board, pin_rays, &checkers);
-        const p_index king_pos = CTZ(board->bitboards[PIECE_WITH(KING, board->player)]);
-        checkers |= is_square_attacked(board, king_pos);
-
-        const p_bitboard check_ray = POP(checkers) == 1 ?
-                BETWEEN_TABLE[king_pos][CTZ(checkers)] | checkers :
-                0xFFFFFFFFFFFFFFFFULL;
-
-        if (POP(checkers) == 2 && PIECE_OF(from) != KING)
+        if (POP(pins.checkers) == 2 && PIECE_OF(from) != KING)
                 return false;
 
         const p_bitboard from_mask = BIT_MASK(move.move.from);
         const p_bitboard to_mask = BIT_MASK(move.move.to);
 
-        if (PIECE_OF(from) != KING && !(to_mask & check_ray))
+        if (PIECE_OF(from) != KING && !(to_mask & pins.check_ray))
                 return false;
 
-        if (from_mask & bishop_pin_board && !(to_mask & pin_rays[move.move.from]))
+        if (from_mask & pins.bishop_pin_board && !(to_mask & pins.pin_rays[move.move.from]))
                 return false;
-        if (from_mask & rook_pin_board && !(to_mask & pin_rays[move.move.from]))
+        if (from_mask & pins.rook_pin_board && !(to_mask & pins.pin_rays[move.move.from]))
                 return false;
 
         // position specifics
