@@ -14,6 +14,11 @@ typedef struct {
         uint8_t flags;
 } p_move;
 
+typedef struct {
+        p_move move;
+        p_piece piece;
+} p_external_move;
+
 static constexpr uint8_t MOVE_PROMOTION = 0b00000001;
 static constexpr uint8_t MOVE_EN_PASSANT = 0b00000010;
 static constexpr uint8_t MOVE_LONG_CASTLE = 0b00000100;
@@ -35,7 +40,7 @@ p_board init_board(char *fen);
 void set_board(p_board board, char *fen);
 void clean_board(p_board board);
 
-bool is_repeated(p_board board);
+bool is_draw(p_board board);
 
 bool moves_are_equal(p_move a, p_move b);
 

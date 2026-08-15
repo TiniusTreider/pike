@@ -127,7 +127,7 @@ p_unmake make_move(p_board board, p_move move)
 
         // save auxillary information
 
-        board->history_end = (board->history_end + 1) % 101;
+        board->history_end = (board->history_end + 1) % 100;
 
         const p_unmake data = (p_unmake){
                 .captured_piece = to,
@@ -246,7 +246,7 @@ void unmake_move(p_board board, p_move move, p_unmake data)
         board->history_start = data.history_start;
         board->history[board->history_end] = data.history;
 
-        board->history_end = (board->history_end + 100) % 101;
+        board->history_end = (board->history_end + 99) % 100;
 
         // restore board state
 
@@ -424,7 +424,7 @@ void set_board(p_board board, char *fen_string)
                 return;
         }
 
-        board->history_start = strtoull(fen_halfmove, NULL, 10);
+        board->history_end = strtoull(fen_halfmove, NULL, 10);
 
         LOG("parsed fifth fen chunk");
         LOG("finished parsing fen");
@@ -440,7 +440,7 @@ void set_board(p_board board, char *fen_string)
         board->zobrist ^= castling_hash[board->castling_rights];
         board->zobrist ^= board->ep_square == NO_SQUARE ? 0 : ep_hash[FILE_OF(board->ep_square)];
 
-        board->history_end = 0;
+        board->history_start = 0;
         memset(board->history, 0, (board->history_start + 1) * sizeof(uint64_t));
 }
 
@@ -449,22 +449,25 @@ void clean_board(p_board board)
         free(board);
 }
 
-bool is_repeated(p_board board)
+bool is_draw(p_board board)
 {
-        if ((board->history_end + 1) % 101 == board->history_start)
+        if (((int)board->history_end - (int)board->history_start + 100) % 100 <= 3)
+                return false;
+
+        if ((board->history_end + 1) % 100 == board->history_start)
                 return true;
 
-        size_t count = 0;
+        bool found = false;
         for (
-                size_t i = (board->history_end + 1) % 101;
-                i != board->history_start;
-                i = (i + 101 + 100) % 101
+                size_t i = (board->history_end + 99) % 100;
+                i != (board->history_start + 99) % 100;
+                i = (i + 100 + 99) % 100
         ) {
                 if (board->history[i] == board->zobrist) {
-                        if (count)
+                        if (found)
                                 return true;
 
-                        count++;
+                        found = true;
                 }
         }
 

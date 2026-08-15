@@ -475,13 +475,15 @@ NAME##_end:
  \
         p_bitboard king_board = board->bitboards[PIECE_WITH(KING, board->player)]; \
  \
-        const p_index startpos = CTZ(king_board); \
-        p_bitboard move_board = KING_MOVE_TABLE[startpos] & ~friendly & MASK; \
-        while (move_board) \
-        { \
-                const p_index endpos = pop_bit(&move_board); \
-                if (!is_square_attacked(board, endpos)) { \
-                        PUSH_VANILLA_MOVE \
+        if (king_board) { \
+                const p_index startpos = CTZ(king_board); \
+                p_bitboard move_board = KING_MOVE_TABLE[startpos] & ~friendly & MASK; \
+                while (move_board) \
+                { \
+                        const p_index endpos = pop_bit(&move_board); \
+                        if (!is_square_attacked(board, endpos)) { \
+                                PUSH_VANILLA_MOVE \
+                        } \
                 } \
         } \
  \
@@ -675,5 +677,84 @@ size_t generate_quiet_moves(p_board board, p_move *buffer)
         }
 
         return move_count;
+}
+
+bool is_move_legal_in_position(p_board board, p_external_move move)
+{
+        // basic checks
+
+        const p_piece from = board->mailbox[move.move.from];
+        if (from != move.piece)
+                return false;
+        const p_piece to = board->mailbox[move.move.to];
+
+        if (from == EMPTY)
+                return false;
+        if (COLOR_OF(from) != board->player)
+                return false;
+
+        if (to != EMPTY && COLOR_OF(to) == board->player)
+                return false;
+
+        // pins and checks
+
+        p_bitboard pin_rays[64];
+        memset(pin_rays, 0, 64 * sizeof(p_bitboard));
+        p_bitboard checkers = 0ULL;
+
+        const p_bitboard bishop_pin_board = bishop_pins(board, pin_rays, &checkers);
+        const p_bitboard rook_pin_board = rook_pins(board, pin_rays, &checkers);
+        const p_index king_pos = CTZ(board->bitboards[PIECE_WITH(KING, board->player)]);
+        checkers |= is_square_attacked(board, king_pos);
+
+        const p_bitboard check_ray = POP(checkers) == 1 ?
+                BETWEEN_TABLE[king_pos][CTZ(checkers)] | checkers :
+                0xFFFFFFFFFFFFFFFFULL;
+
+        if (POP(checkers) == 2 && PIECE_OF(from) != KING)
+                return false;
+
+        const p_bitboard from_mask = BIT_MASK(move.move.from);
+        const p_bitboard to_mask = BIT_MASK(move.move.to);
+
+        if (PIECE_OF(from) != KING && !(to_mask & check_ray))
+                return false;
+
+        if (from_mask & bishop_pin_board && !(to_mask & pin_rays[move.move.from]))
+                return false;
+        if (from_mask & rook_pin_board && !(to_mask & pin_rays[move.move.from]))
+                return false;
+
+        // position specifics
+
+        switch (PIECE_OF(from)) {
+                case PAWN: {
+                        if (FILE_OF(move.move.from) != FILE_OF(move.move.to)) {
+                                if (to == EMPTY)
+                                        return false;
+                        } else {
+                                if (to != EMPTY)
+                                        return false;
+
+                                if (
+                                        RANK_OF(move.move.from) - RANK_OF(move.move.to) + 1 > 3 &&
+                                        board->all_pieces &
+                                        BIT_MASK(move.move.to + BEHIND[board->player])
+                                )
+                                        return false;
+                        }
+                } break;
+                case KING: {
+                        if (is_square_attacked(board, move.move.to))
+                                return false;
+                } break;
+                case KNIGHT: break;
+                default: {
+                        if (board->all_pieces & BETWEEN_TABLE[move.move.from][move.move.to])
+                                return false;
+                }
+        }
+
+        return true;
 }
 

@@ -164,13 +164,15 @@ static inline void get_fen(p_board board, char fen[128])
         }
 
         if (board->ep_square == NO_SQUARE) {
-                strcat(fen, "- - -");
+                strcat(fen, "- ");
         } else {
                 sprintf(
-                        fen + strlen(fen), "%c%c - -",
+                        fen + strlen(fen), "%c%c ",
                         'a' + FILE_OF(board->ep_square), '1' + RANK_OF(board->ep_square)
                 );
         }
+
+        sprintf(fen + strlen(fen), "%zu - ", (board->history_end - board->history_start + 101) % 101);
 }
 
 void print_board(p_board board)

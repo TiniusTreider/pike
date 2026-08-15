@@ -19,18 +19,12 @@
 #include <stdio.h>
 #include <threads.h>
 
-#define MATE_SCORE 15000
-#define MATE_THRESHOLD 14000
-
 static size_t nodes_searched = 0;
 #define NODE_LIMIT_FREQ 0xFFFF
 
-#define TT_SIZE_MB 16
-#define TT_SIZE_B TT_SIZE_MB * 1024 * 1024
-#define TT_ELEMENTS TT_SIZE_B / sizeof(p_tt_entry)
-static p_tt_entry tt[TT_ELEMENTS] = {0};
+#define Q_DEPTH 10
 
-static inline p_eval quiescence(p_eval alpha, p_eval beta)
+static inline p_eval quiescence(size_t depth, p_eval alpha, p_eval beta)
 {
         nodes_searched++;
 
@@ -44,10 +38,13 @@ static inline p_eval quiescence(p_eval alpha, p_eval beta)
                 }
         }
 
-        if (is_repeated(pike->data.board))
-                return 0;
-
         const p_eval quiet = evaluation(pike->data.board);
+
+        if (depth == 0)
+                return quiet;
+
+        if (is_draw(pike->data.board))
+                return 0;
 
         if (quiet > beta)
                 return quiet;
@@ -65,7 +62,7 @@ static inline p_eval quiescence(p_eval alpha, p_eval beta)
         {
                 const p_unmake data = make_move(pike->data.board, buffer[i]);
 
-                const p_eval eval = -quiescence(-beta, -alpha);
+                const p_eval eval = -quiescence(depth - 1, -beta, -alpha);
 
                 unmake_move(pike->data.board, buffer[i], data);
 
@@ -84,41 +81,49 @@ static inline p_eval quiescence(p_eval alpha, p_eval beta)
 #define SEARCH_MAX 64
 static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
 
-#define EVAL_LOOP(VAR) \
-        for (size_t i = 0; i < VAR; i++) \
-        { \
-                const p_unmake data = make_move(pike->data.board, buffer[i]); \
+#define MATE_SCORE 15000
+#define MATE_THRESHOLD 14000
+
+#define TT_SIZE_MB 16
+#define TT_SIZE_B TT_SIZE_MB * 1024 * 1024
+#define TT_ELEMENTS TT_SIZE_B / sizeof(p_tt_entry)
+static p_tt_entry tt[TT_ELEMENTS] = {0};
+
+#define DOUBLE(A) A, A
+static p_external_move killer_moves[SEARCH_MAX][2] = {0};
+
+#define EVAL_MOVE(MOVE, SOURCE) do { \
+        const p_unmake data = make_move(pike->data.board, MOVE); \
  \
-                size_t copy_size = 0; \
-                const p_eval eval = -negamax(depth - 1, ply + 1, &copy_size, -beta, -alpha); \
+        size_t copy_size = 0; \
+        const p_eval eval = -negamax(depth - 1, ply + 1, &copy_size, -beta, -alpha); \
  \
-                unmake_move(pike->data.board, buffer[i], data); \
+        unmake_move(pike->data.board, MOVE, data); \
  \
-                if (pike->stop) \
-                        return 0; \
+        if (pike->stop) \
+                return 0; \
  \
-                if (eval > max_eval) { \
-                        max_eval = eval; \
-                        best_move = buffer[i]; \
+        if (eval > max_eval) { \
+                max_eval = eval; \
+                best_move = MOVE; \
  \
-                        if (copy_size) \
-                                memcpy( \
-                                        pv_matrix[ply] + 1, \
-                                        pv_matrix[ply + 1], \
-                                        copy_size * sizeof(p_move) \
-                                ); \
+                if (copy_size) \
+                        memcpy( \
+                                pv_matrix[ply] + 1, \
+                                pv_matrix[ply + 1], \
+                                copy_size * sizeof(p_move) \
+                        ); \
  \
-                        *pv_length = copy_size + 1; \
+                *pv_length = copy_size + 1; \
  \
-                        alpha = max_eval; \
-                } \
+                alpha = max_eval; \
+        } \
  \
-                if (alpha >= beta) { \
-                        pruned = true; \
-                        *pv_length = 0; \
-                        break; \
-                } \
-        }
+        if (alpha >= beta) { \
+                *pv_length = 0; \
+                goto cleanup; \
+        } \
+} while (false)
 
 static size_t bf_nodes = 0;
 
@@ -138,68 +143,65 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
         }
 
         if (depth == 0)
-                return quiescence(alpha, beta);
+                return quiescence(Q_DEPTH, alpha, beta);
 
-        if (is_repeated(pike->data.board))
+        if (is_draw(pike->data.board))
                 return 0;
 
         p_tt_entry *entry = tt + (pike->data.board->zobrist % TT_ELEMENTS);
         bool tt_hit = false;
+        p_external_move tt_move;
         if (entry->hash == pike->data.board->zobrist) {
                 if (entry->depth >= depth) {
                         if (entry->bound == EXACT) {
                                 return entry->eval;
                         } else {
-                                alpha = entry->eval;
+                                alpha = MAX(alpha, entry->eval);
                         }
                 }
 
-                tt_hit = true;
-        }
-
-        p_move buffer[218];
-        const size_t capture_count = generate_capture_moves(pike->data.board, buffer);
-
-        bool found_tt_move = false;
-        if (tt_hit) {
-                for (size_t i = 0; i < capture_count; i++)
-                {
-                        if (moves_are_equal(buffer[i], entry->best)) {
-                                found_tt_move = true;
-                                const p_move temp = buffer[0];
-                                buffer[0] = buffer[i];
-                                buffer[i] = temp;
-                                break;
-                        }
+                if (is_move_legal_in_position(pike->data.board, entry->best)) {
+                        tt_move = entry->best;
+                        tt_hit = true;
                 }
         }
+
+        size_t capture_count = 0;
+        size_t quiet_count = 0;
+
+        bool pruned = true;
 
         p_eval max_eval = EVAL_MIN;
         p_move best_move = NULL_MOVE;
 
-        bool pruned = false;
+        if (tt_hit)
+                EVAL_MOVE(tt_move.move, "tt");
 
-        EVAL_LOOP(capture_count)
+        p_move buffer[218];
+        capture_count = generate_capture_moves(pike->data.board, buffer);
 
-        size_t quiet_count = 0;
-        if (!pruned) {
-                quiet_count = generate_quiet_moves(
-                        pike->data.board, buffer + capture_count
-                );
+        bool tt_hit_found = false;
 
-                if (tt_hit && !found_tt_move) {
-                        for (size_t i = capture_count; i < capture_count + quiet_count; i++)
-                        {
-                                if (moves_are_equal(buffer[i], entry->best)) {
-                                        const p_move temp = buffer[0];
-                                        buffer[0] = buffer[i];
-                                        buffer[i] = temp;
-                                        break;
-                                }
-                        }
+        for (size_t i = 0; i < capture_count; i++)
+        {
+                if (tt_hit && !tt_hit_found && moves_are_equal(buffer[i], tt_move.move)) {
+                        tt_hit_found = true;
+                        continue;
                 }
 
-                EVAL_LOOP(quiet_count)
+                EVAL_MOVE(buffer[i], "capture");
+        }
+
+        quiet_count = generate_quiet_moves(pike->data.board, buffer + capture_count);
+
+        for (size_t i = 0; i < quiet_count; i++)
+        {
+                if (tt_hit && !tt_hit_found && moves_are_equal(buffer[i], tt_move.move)) {
+                        tt_hit_found = true;
+                        continue;
+                }
+
+                EVAL_MOVE(buffer[i], "quiet");
         }
 
         if (capture_count + quiet_count == 0) {
@@ -215,13 +217,22 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
                 }
         }
 
-        *entry = (p_tt_entry){
-                .best = best_move,
-                .eval = max_eval,
-                .hash = pike->data.board->zobrist,
-                .depth = depth,
-                .bound = pruned ? LOWER : EXACT
-        };
+        pruned = false;
+
+cleanup:
+
+        if (!IS_NULL_MOVE(best_move)) {
+                *entry = (p_tt_entry){
+                        .best = (p_external_move){
+                                .move = best_move,
+                                .piece = pike->data.board->mailbox[best_move.from]
+                        },
+                        .eval = max_eval,
+                        .hash = pike->data.board->zobrist,
+                        .depth = depth,
+                        .bound = pruned ? LOWER : EXACT
+                };
+        }
 
         pv_matrix[ply][0] = best_move;
 

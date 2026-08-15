@@ -11,7 +11,7 @@ typedef enum : uint8_t {
 } p_tt_bound;
 
 typedef struct {
-        p_move best;
+        p_external_move best;
         uint64_t hash;
         p_eval eval;
         p_tt_bound bound;
