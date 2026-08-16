@@ -167,7 +167,8 @@ struct pair { char *string; void (*function)(void); };
         X(nodes) \
         X(movetime) \
         X(infinite) \
-        X(perft)
+        X(perft) \
+        X(mate)
 
 #define X(COMMAND) void COMMAND##_c(void);
 GO_COMMANDS
@@ -267,6 +268,11 @@ void perft_c(void)
         ADVANCE_TOKEN
         pike->data.perft_depth = strtoull(token, NULL, 10);
         pike->data.perft = true;
+}
+void mate_c(void)
+{
+        ADVANCE_TOKEN
+        pike->data.depth = strtoull(token, NULL, 10) * 2 - 1;
 }
 
 void stop_c(void);

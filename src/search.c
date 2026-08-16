@@ -24,6 +24,9 @@ static size_t nodes_searched = 0;
 
 #define Q_DEPTH 10
 
+#define MATE_SCORE 15000
+#define MATE_THRESHOLD 14000
+
 static inline p_eval quiescence(size_t depth, p_eval alpha, p_eval beta)
 {
         nodes_searched++;
@@ -81,9 +84,6 @@ static inline p_eval quiescence(size_t depth, p_eval alpha, p_eval beta)
 
 #define SEARCH_MAX 64
 static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
-
-#define MATE_SCORE 15000
-#define MATE_THRESHOLD 14000
 
 #define TT_SIZE_MB 16
 #define TT_SIZE_B TT_SIZE_MB * 1024 * 1024
@@ -207,12 +207,7 @@ static inline p_eval negamax(size_t depth, size_t ply, size_t *pv_length, p_eval
         }
 
         if (capture_count + quiet_count == 0) {
-                const p_piece king = PIECE_WITH(KING, pike->data.board->player);
-                const p_index king_pos = CTZ(pike->data.board->bitboards[king]);
-                if (is_square_attacked(
-                        pike->data.board,
-                        king_pos
-                )) {
+                if (pins.checkers) {
                         return -MATE_SCORE;
                 } else {
                         return 0;
@@ -265,28 +260,22 @@ static inline void search(void)
         const size_t search_time = get_search_time();
         pike->data.deadline = now_ms() + search_time;
 
-        p_eval chosen_eval = 0;
         p_move chosen_move = NULL_MOVE;
 
         const p_pins pins = generate_pins(pike->data.board);
 
-        printf("bishop pins:\n");
-        print_bitboard(pins.bishop_pin_board);
-        printf("rook pins:\n");
-        print_bitboard(pins.rook_pin_board);
-        printf("pin rays:\n");
-        for (int i = 0; i < 64; i++)
-        {
-                print_bitboard(pins.pin_rays[i]);
-                printf("\n");
-        }
-        printf("check ray:\n");
-        print_bitboard(pins.check_ray);
-        fflush(stdout);
-
         p_move buffer[218];
         size_t move_count = generate_capture_moves(pike->data.board, buffer, pins);
         move_count += generate_quiet_moves(pike->data.board, buffer + move_count, pins);
+
+        if (move_count == 0) {
+                if (pins.checkers) {
+                        printf("info depth 0 score mate 0\n");
+                } else {
+                        printf("info depth 0 score cp 0\n");
+                }
+                pike->stop = true;
+        }
 
         size_t max_depth = 0;
 
@@ -337,7 +326,6 @@ static inline void search(void)
                 if (pike->stop)
                         break;
 
-                chosen_eval = max_eval;
                 chosen_move = best_move;
                 pv_matrix[0][0] = best_move;
 
@@ -350,10 +338,21 @@ static inline void search(void)
                         if (i != pv_length - 1)
                                 strcat(pv_string, " ");
                 }
-                printf(
-                        "info depth %zu score cp %d nodes %zu pv %s\n",
-                        depth, chosen_eval, nodes_searched, pv_string
-                );
+                if (abs(max_eval) > MATE_THRESHOLD) {
+                        const p_eval mate_plies = MATE_SCORE - abs(max_eval);
+                        const p_eval mate_moves = (mate_plies + 1) / 2;
+                        const p_eval mate = max_eval > 0 ? mate_moves : -mate_moves;
+                        printf(
+                                "info depth %zu score mate %d nodes %zu pv %s\n",
+                                depth, mate, nodes_searched, pv_string
+                        );
+                        pike->stop = true;
+                } else {
+                        printf(
+                                "info depth %zu score cp %d nodes %zu pv %s\n",
+                                depth, max_eval, nodes_searched, pv_string
+                        );
+                }
                 fflush(stdout);
 
                 max_depth = depth;
