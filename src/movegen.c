@@ -444,7 +444,9 @@ NAME##_end:
                 const p_index startpos = pop_bit(&knight_board); \
  \
                 p_bitboard move_board = KNIGHT_MOVE_TABLE[startpos] & ~friendly & MASK; \
-                E \
+ \
+                E Q \
+ \
                 while (move_board) \
                 { \
                         const p_index endpos = pop_bit(&move_board); \
@@ -726,7 +728,7 @@ bool is_move_legal_in_position(p_board board, p_external_move move, p_pins pins)
         switch (PIECE_OF(from)) {
                 case PAWN: {
                         if (FILE_OF(move.move.from) != FILE_OF(move.move.to)) {
-                                if (to == EMPTY)
+                                if (to == EMPTY && move.move.to != board->ep_square)
                                         return false;
                         } else {
                                 if (to != EMPTY)

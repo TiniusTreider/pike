@@ -90,8 +90,7 @@ static p_move pv_matrix[SEARCH_MAX][SEARCH_MAX] = {0};
 #define TT_ELEMENTS TT_SIZE_B / sizeof(p_tt_entry)
 static p_tt_entry tt[TT_ELEMENTS] = {0};
 
-#define DOUBLE(A) A, A
-static p_external_move killer_moves[SEARCH_MAX][2] = {0};
+//static p_external_move killer_moves[SEARCH_MAX][2] = {0};
 
 #define EVAL_MOVE(MOVE, SOURCE) do { \
         const p_unmake data = make_move(pike->data.board, MOVE); \
@@ -270,6 +269,21 @@ static inline void search(void)
         p_move chosen_move = NULL_MOVE;
 
         const p_pins pins = generate_pins(pike->data.board);
+
+        printf("bishop pins:\n");
+        print_bitboard(pins.bishop_pin_board);
+        printf("rook pins:\n");
+        print_bitboard(pins.rook_pin_board);
+        printf("pin rays:\n");
+        for (int i = 0; i < 64; i++)
+        {
+                print_bitboard(pins.pin_rays[i]);
+                printf("\n");
+        }
+        printf("check ray:\n");
+        print_bitboard(pins.check_ray);
+        fflush(stdout);
+
         p_move buffer[218];
         size_t move_count = generate_capture_moves(pike->data.board, buffer, pins);
         move_count += generate_quiet_moves(pike->data.board, buffer + move_count, pins);
