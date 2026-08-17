@@ -258,7 +258,7 @@ static inline size_t get_search_time(void)
 static inline void search(void)
 {
         const size_t search_time = get_search_time();
-        pike->data.deadline = now_ms() + search_time;
+        pike->data.deadline = search_time ? now_ms() + search_time : 0;
 
         p_move chosen_move = NULL_MOVE;
 
@@ -374,9 +374,11 @@ static inline void search(void)
                 max_depth = depth;
         }
 
-        const double bf = pow(bf_nodes, 1.0 / max_depth);
-        const size_t nps = nodes_searched / search_time * 1000;
-        printf("info string bf %lf nps %zu\n", bf, nps);
+        if (search_time) {
+                const double bf = pow(bf_nodes, 1.0 / max_depth);
+                const size_t nps = nodes_searched / search_time * 1000;
+                printf("info string bf %lf nps %zu\n", bf, nps);
+        }
 
         char move_string[6];
         print_move(chosen_move, move_string);
