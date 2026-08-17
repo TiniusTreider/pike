@@ -268,6 +268,22 @@ static inline void search(void)
         size_t move_count = generate_capture_moves(pike->data.board, buffer, pins);
         move_count += generate_quiet_moves(pike->data.board, buffer + move_count, pins);
 
+        if (pike->data.searchmoves_size) {
+                p_move temp[218];
+                size_t temp_size = 0;
+                for (size_t i = 0; i < pike->data.searchmoves_size; i++)
+                {
+                        for (size_t j = 0; j < move_count; j++)
+                        {
+                                if (moves_are_equal(pike->data.searchmoves[i], buffer[j])) {
+                                        temp[temp_size++] = buffer[j];
+                                }
+                        }
+                }
+                memcpy(buffer, temp, temp_size * sizeof(p_move));
+                move_count = temp_size;
+        }
+
         if (move_count == 0) {
                 if (pins.checkers) {
                         printf("info depth 0 score mate 0\n");
